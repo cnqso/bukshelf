@@ -7,25 +7,23 @@ import Providers from '@/components/Providers';
 
 import '../styles/globals.css';
 
-const url = 'https://web.readest.com/';
-const title = 'Readest — Where You Read, Digest and Get Insight';
+const brandName = process.env['SELF_HOSTED_BRAND_NAME'] || 'Readest';
+const isWhiteLabeled = brandName !== 'Readest';
+const url = process.env['SITE_URL'] || 'https://web.readest.com/';
+const title = `${brandName} — Your cloud bookshelf`;
 const description =
-  'Discover Readest, the ultimate online ebook reader for immersive and organized reading. ' +
-  'Enjoy seamless access to your digital library, powerful tools for highlighting, bookmarking, ' +
-  'and note-taking, and support for multiple book views. ' +
-  'Perfect for deep reading, analysis, and understanding. Explore now!';
-const previewImage = 'https://cdn.readest.com/images/open_graph_preview_read_now.png';
+  'A private, self-hosted ebook library for reading, highlighting, note-taking, and listening.';
 
 export const metadata: Metadata = {
   metadataBase: new URL(url),
   title: {
     default: title,
-    template: '%s | Readest',
+    template: `%s | ${brandName}`,
   },
   description,
   generator: 'Next.js',
-  manifest: '/manifest.json',
-  keywords: ['epub', 'pdf', 'ebook', 'reader', 'readest', 'pwa'],
+  manifest: '/manifest.webmanifest',
+  keywords: ['epub', 'pdf', 'ebook', 'reader', brandName.toLowerCase(), 'pwa'],
   authors: [
     {
       name: 'readest',
@@ -33,12 +31,14 @@ export const metadata: Metadata = {
     },
   ],
   icons: {
-    icon: [{ url: '/icon.png' }, { url: '/favicon.ico' }],
-    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
+    icon: isWhiteLabeled
+      ? [{ url: '/bukshelf-icon.svg', type: 'image/svg+xml' }]
+      : [{ url: '/icon.png' }, { url: '/favicon.ico' }],
+    apple: isWhiteLabeled ? undefined : [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
   },
   appleWebApp: {
     capable: true,
-    title: 'Readest',
+    title: brandName,
     statusBarStyle: 'default',
   },
   openGraph: {
@@ -46,17 +46,14 @@ export const metadata: Metadata = {
     url,
     title,
     description,
-    images: [previewImage],
   },
   twitter: {
-    card: 'summary_large_image',
+    card: 'summary',
     title,
     description,
-    images: [previewImage],
   },
   other: {
     'apple-mobile-web-app-capable': 'yes',
-    'twitter:domain': 'web.readest.com',
     'twitter:url': url,
   },
 };

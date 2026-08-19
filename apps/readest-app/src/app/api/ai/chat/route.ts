@@ -128,7 +128,7 @@ export async function POST(req: Request): Promise<Response> {
       apiKey,
       headers: {
         'HTTP-Referer': process.env['SITE_URL'] || 'http://localhost:3000',
-        'X-Title': 'Readest Self-Hosted',
+        'X-Title': `${process.env['SELF_HOSTED_BRAND_NAME'] || 'Readest'} Self-Hosted`,
       },
     });
     const result = streamText({

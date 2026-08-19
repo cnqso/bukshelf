@@ -1,7 +1,12 @@
-'use client';
+import HomePageContent from '@/components/HomePageContent';
+import { getServerRuntimeConfig } from '@/services/runtimeConfig';
 
-import LibraryPage from './library/page';
+export const dynamic = 'force-dynamic';
 
 export default function HomePage() {
-  return <LibraryPage />;
+  return (
+    <HomePageContent
+      publicLibraryEnabled={getServerRuntimeConfig().publicLibraryEnabled === true}
+    />
+  );
 }

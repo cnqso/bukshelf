@@ -20,6 +20,7 @@ import { setAboutDialogVisible } from '@/components/AboutWindow';
 import useBooksManager from '../../hooks/useBooksManager';
 import MenuItem from '@/components/MenuItem';
 import Menu from '@/components/Menu';
+import { getBrandName } from '@/services/runtimeConfig';
 
 interface BookMenuProps {
   menuClassName?: string;
@@ -28,6 +29,7 @@ interface BookMenuProps {
 
 const BookMenu: React.FC<BookMenuProps> = ({ menuClassName, setIsDropdownOpen }) => {
   const _ = useTranslation();
+  const brandName = getBrandName();
   const { envConfig } = useEnv();
   const { settings } = useSettingsStore();
   const { bookKeys, recreateViewer, getViewSettings } = useReaderStore();
@@ -229,8 +231,10 @@ const BookMenu: React.FC<BookMenuProps> = ({ menuClassName, setIsDropdownOpen })
       />
       <MenuItem label={_('Reload Page')} shortcut='Shift+R' onClick={handleReloadPage} />
       <hr aria-hidden='true' className='border-base-200 my-1' />
-      {isWebAppPlatform() && <MenuItem label={_('Download Readest')} onClick={downloadReadest} />}
-      <MenuItem label={_('About Readest')} onClick={showAboutReadest} />
+      {isWebAppPlatform() && brandName === 'Readest' && (
+        <MenuItem label={_('Download Readest')} onClick={downloadReadest} />
+      )}
+      <MenuItem label={`About ${brandName}`} onClick={showAboutReadest} />
     </Menu>
   );
 };

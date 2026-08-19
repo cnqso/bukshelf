@@ -54,6 +54,17 @@ export const r2Storage = {
     ).url.toString();
   },
 
+  getObject: async (bucketName: string, fileKey: string) => {
+    const response = await r2Storage
+      .getR2Client()
+      .fetch(`${r2Storage.getR2Url()}/${bucketName}/${fileKey}`);
+    if (!response.ok) throw new Error(`Object download failed with ${response.status}`);
+    return {
+      body: new Uint8Array(await response.arrayBuffer()),
+      contentType: response.headers.get('content-type') || undefined,
+    };
+  },
+
   putObject: async (
     bucketName: string,
     fileKey: string,

@@ -48,7 +48,7 @@ import MenuItem from '@/components/MenuItem';
 import Quota from '@/components/Quota';
 import Menu from '@/components/Menu';
 import { type AppLockDialogMode, useAppLockStore } from '@/store/appLockStore';
-import { getRuntimeConfig } from '@/services/runtimeConfig';
+import { getBrandName, getRuntimeConfig } from '@/services/runtimeConfig';
 
 interface SettingsMenuProps {
   onPullLibrary: (fullRefresh?: boolean, verbose?: boolean) => void;
@@ -74,6 +74,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onPullLibrary, setIsDropdow
   );
   const iconSize = useResponsiveSize(16);
   const runtimeConfig = getRuntimeConfig();
+  const brandName = getBrandName();
 
   const [isRefreshingMetadata, setIsRefreshingMetadata] = useState(false);
   const [refreshMetadataProgress, setRefreshMetadataProgress] = useState('');
@@ -503,8 +504,10 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onPullLibrary, setIsDropdow
       {user && userProfilePlan === 'free' && !hasSelfHostedPremiumFeatures() && (
         <MenuItem label={_('Upgrade to Readest Premium')} onClick={handleUpgrade} />
       )}
-      {isWebAppPlatform() && <MenuItem label={_('Download Readest')} onClick={downloadReadest} />}
-      <MenuItem label={_('About Readest')} onClick={showAboutReadest} />
+      {isWebAppPlatform() && brandName === 'Readest' && (
+        <MenuItem label={_('Download Readest')} onClick={downloadReadest} />
+      )}
+      <MenuItem label={`About ${brandName}`} onClick={showAboutReadest} />
     </Menu>
   );
 };

@@ -4,7 +4,7 @@ import type { AIProvider, AISettings, AIProviderName } from '../types';
 import { aiLogger } from '../logger';
 import { AI_TIMEOUTS } from '../utils/retry';
 import { getAIFetch } from '../utils/httpFetch';
-import { getRuntimeConfig } from '@/services/runtimeConfig';
+import { getBrandName, getRuntimeConfig } from '@/services/runtimeConfig';
 import { fetchWithAuth } from '@/utils/fetch';
 import { createProxiedEmbeddingModel } from './ProxiedGatewayEmbedding';
 
@@ -56,7 +56,7 @@ export class OpenRouterProvider implements AIProvider {
         // compatible backends (they ignore unknown headers).
         headers: {
           'HTTP-Referer': 'https://readest.com',
-          'X-Title': 'Readest',
+          'X-Title': getBrandName(),
         },
         // Route chat completions / embeddings through our environment-aware
         // fetch so streaming responses bypass the renderer's CORS sandbox

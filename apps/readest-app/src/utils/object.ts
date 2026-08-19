@@ -65,6 +65,17 @@ export const getUploadSignedUrl = async (
   }
 };
 
+export const getObject = async (fileKey: string, bucketName?: string) => {
+  const storageType = getStorageType();
+  if (storageType === 'r2') {
+    bucketName = bucketName || process.env['R2_BUCKET_NAME'] || '';
+    return await r2Storage.getObject(bucketName, fileKey);
+  } else {
+    bucketName = bucketName || process.env['S3_BUCKET_NAME'] || '';
+    return await s3Storage.getObject(bucketName, fileKey);
+  }
+};
+
 export const putObject = async (
   fileKey: string,
   body: ArrayBuffer | string,

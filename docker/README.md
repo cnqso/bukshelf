@@ -50,7 +50,7 @@ docker compose up -d
 ```
 
 this pulls `${READEST_IMAGE}` (default: `ghcr.io/readest/readest:latest`) instead of building the client locally.
-the web client now reads `SUPABASE_PUBLIC_URL`, `SUPABASE_ANON_KEY`, `API_BASE_URL`, `OBJECT_STORAGE_TYPE`, `STORAGE_FIXED_QUOTA`, `TRANSLATION_FIXED_QUOTA`, `SELF_HOSTED_PREMIUM_FEATURES`, `SELF_HOSTED_PRIVACY_MODE`, and safe Reader AI model metadata from runtime
+the web client now reads `SUPABASE_PUBLIC_URL`, `SUPABASE_ANON_KEY`, `API_BASE_URL`, `OBJECT_STORAGE_TYPE`, `STORAGE_FIXED_QUOTA`, `TRANSLATION_FIXED_QUOTA`, `SELF_HOSTED_PREMIUM_FEATURES`, `SELF_HOSTED_PRIVACY_MODE`, white-label/public-library settings, and safe Reader AI model metadata from runtime
 container env, so custom self-hosted values work with pulled images.
 
 set `SELF_HOSTED_PRIVACY_MODE=true` to prevent PostHog from initializing. To
@@ -60,6 +60,14 @@ server routes. The default guardrails are 2 concurrent requests, 30 requests per
 minute, 250,000 tokens per UTC day, and 2,048 output tokens per response.
 Signed-in users can open **Advanced Settings → Usage & Costs** to compare the
 live local safety meters with exact Soniox and OpenRouter provider billing.
+
+For a single-owner white-label deployment, set `SELF_HOSTED_BRAND_NAME` and
+`SELF_HOSTED_OWNER_EMAIL`. Setting `SELF_HOSTED_PUBLIC_LIBRARY=true` replaces
+the signed-out home screen with a read-only catalog for that account. Its API
+returns only a synthetic ID, title, author, and same-origin cover URL; cover
+bytes are proxied so storage keys and the owner's user ID are not disclosed.
+Set `SELF_HOSTED_SOURCE_URL` to the public source for the exact modified build
+when making an AGPL-covered deployment available over a network.
 
 if you prefer Docker Hub, set `READEST_IMAGE` in `docker/.env`, for example:
 

@@ -5,6 +5,7 @@ import { FaApple, FaGithub, FaDiscord } from 'react-icons/fa';
 import { useTranslation } from '@/hooks/useTranslation';
 import { ProviderLogin, type OAuthProvider } from './ProviderLogin';
 import EmailPasswordAuth from './EmailPasswordAuth';
+import { getBrandName } from '@/services/runtimeConfig';
 
 interface AuthPanelProps {
   supabaseClient: SupabaseClient;
@@ -20,13 +21,26 @@ export default function AuthPanel({
   onProviderSignIn,
 }: AuthPanelProps) {
   const _ = useTranslation();
+  const brandName = getBrandName();
 
   return (
     <div className='flex w-full max-w-sm flex-col items-center gap-6'>
       <div className='flex flex-col items-center gap-3 text-center'>
-        <Image src='/icon.png' alt='' width={56} height={56} className='eink-bordered rounded-xl' />
+        {brandName === 'Readest' ? (
+          <Image
+            src='/icon.png'
+            alt=''
+            width={56}
+            height={56}
+            className='eink-bordered rounded-xl'
+          />
+        ) : (
+          <span className='bg-base-content text-base-100 grid h-14 w-14 place-items-center rounded-2xl font-serif text-3xl font-semibold shadow-sm'>
+            {brandName.charAt(0).toUpperCase()}
+          </span>
+        )}
         <div>
-          <h1 className='text-xl font-semibold tracking-tight'>{_('Sign in to Readest')}</h1>
+          <h1 className='text-xl font-semibold tracking-tight'>Sign in to {brandName}</h1>
           <p className='text-base-content/70 mt-1.5 text-sm leading-relaxed'>
             {_('Sync your library, reading progress, and highlights across your devices.')}
           </p>

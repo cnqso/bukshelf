@@ -82,6 +82,19 @@ export const s3Storage = {
     return uploadUrl;
   },
 
+  getObject: async (bucketName: string, fileKey: string) => {
+    const getCommand = new GetObjectCommand({
+      Bucket: bucketName,
+      Key: fileKey,
+    });
+    const response = await s3Storage.getClient().send(getCommand);
+    if (!response.Body) throw new Error('Object body is empty');
+    return {
+      body: await response.Body.transformToByteArray(),
+      contentType: response.ContentType,
+    };
+  },
+
   putObject: async (
     bucketName: string,
     fileKey: string,

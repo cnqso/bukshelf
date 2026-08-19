@@ -1,4 +1,7 @@
 export interface ReadestRuntimeConfig {
+  brandName?: string;
+  publicLibraryEnabled?: boolean;
+  sourceCodeUrl?: string;
   supabaseUrl?: string;
   supabaseAnonKey?: string;
   apiBaseUrl?: string;
@@ -23,7 +26,20 @@ declare global {
 export const getRuntimeConfig = () =>
   typeof window === 'undefined' ? undefined : window.__READEST_RUNTIME_CONFIG;
 
+export const getBrandName = () =>
+  typeof window === 'undefined'
+    ? process.env['SELF_HOSTED_BRAND_NAME'] || 'Readest'
+    : getRuntimeConfig()?.brandName || 'Readest';
+
+export const getSourceCodeUrl = () =>
+  typeof window === 'undefined'
+    ? process.env['SELF_HOSTED_SOURCE_URL'] || 'https://github.com/readest/readest'
+    : getRuntimeConfig()?.sourceCodeUrl || 'https://github.com/readest/readest';
+
 export const getServerRuntimeConfig = (): ReadestRuntimeConfig => ({
+  brandName: process.env['SELF_HOSTED_BRAND_NAME'] || 'Readest',
+  publicLibraryEnabled: process.env['SELF_HOSTED_PUBLIC_LIBRARY']?.toLowerCase() === 'true',
+  sourceCodeUrl: process.env['SELF_HOSTED_SOURCE_URL'] || 'https://github.com/readest/readest',
   // Browser runtime config should prefer a public Supabase URL when provided.
   // SUPABASE_URL remains as a backward-compatible fallback for non-split setups.
   supabaseUrl:
