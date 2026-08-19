@@ -57,6 +57,11 @@ vi.mock('@/services/tts/EdgeTTSClient', () => ({
     Object.assign(this, makeMockClient('edge-tts'));
   }),
 }));
+vi.mock('@/services/tts/SonioxTTSClient', () => ({
+  SonioxTTSClient: vi.fn().mockImplementation(function (this: Record<string, unknown>) {
+    Object.assign(this, makeMockClient('soniox-tts'));
+  }),
+}));
 
 vi.mock('@/services/tts/NativeTTSClient', () => ({
   NativeTTSClient: vi.fn().mockImplementation(function (this: Record<string, unknown>) {

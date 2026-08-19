@@ -23,6 +23,12 @@ vi.mock('@/services/tts/EdgeTTSClient', () => ({
   }),
 }));
 
+vi.mock('@/services/tts/SonioxTTSClient', () => ({
+  SonioxTTSClient: vi.fn().mockImplementation(function (this: Record<string, unknown>) {
+    Object.assign(this, createMockTTSClient('soniox'));
+  }),
+}));
+
 vi.mock('@/services/tts/NativeTTSClient', () => ({
   NativeTTSClient: vi.fn().mockImplementation(function (this: Record<string, unknown>) {
     Object.assign(this, createMockTTSClient('native'));
@@ -285,24 +291,25 @@ describe('TTSController', () => {
   });
 
   describe('init', () => {
-    test('initialises edge and web clients', async () => {
+    test('initialises Soniox, edge, and web clients', async () => {
       await controller.init();
 
+      expect(controller.ttsSonioxClient.init).toHaveBeenCalled();
       expect(controller.ttsEdgeClient.init).toHaveBeenCalled();
       expect(controller.ttsWebClient.init).toHaveBeenCalled();
     });
 
-    test('sets ttsClient to first available client (edge)', async () => {
+    test('sets ttsClient to first available client (Soniox)', async () => {
       await controller.init();
-      // edge inits first and succeeds, so it becomes the active client
-      expect(controller.ttsClient.name).toBe('edge');
+      expect(controller.ttsClient.name).toBe('soniox');
     });
 
-    test('fetches voices from web and edge clients', async () => {
+    test('fetches voices from web, Soniox, and edge clients', async () => {
       await controller.init();
 
       expect(controller.ttsWebClient.getAllVoices).toHaveBeenCalled();
       expect(controller.ttsEdgeClient.getAllVoices).toHaveBeenCalled();
+      expect(controller.ttsSonioxClient.getAllVoices).toHaveBeenCalled();
     });
 
     test('respects preferred client from TTSUtils', async () => {
@@ -314,8 +321,7 @@ describe('TTSController', () => {
     test('falls back to web client when preferred client not found', async () => {
       vi.mocked(TTSUtils.getPreferredClient).mockReturnValue('nonexistent');
       await controller.init();
-      // first available is edge
-      expect(controller.ttsClient.name).toBe('edge');
+      expect(controller.ttsClient.name).toBe('soniox');
     });
 
     test('also initializes native client on Android', async () => {
@@ -360,6 +366,15 @@ describe('TTSController', () => {
   });
 
   describe('setVoice', () => {
+    test('switches to Soniox when Kayla is selected', async () => {
+      controller.ttsSonioxVoices = [{ id: 'Kayla', name: 'Kayla', lang: 'en' }];
+
+      await controller.setVoice('Kayla', 'en');
+
+      expect(controller.ttsClient.name).toBe('soniox');
+      expect(TTSUtils.setPreferredClient).toHaveBeenCalledWith('soniox');
+    });
+
     test('switches to edge client when voice found in edge voices', async () => {
       controller.ttsEdgeVoices = [{ id: 'edge-voice-1', name: 'Edge Voice', lang: 'en-US' }];
       await controller.setVoice('edge-voice-1', 'en');
@@ -428,11 +443,15 @@ describe('TTSController', () => {
       const webVoices: TTSVoicesGroup[] = [
         { id: 'wg', name: 'Web', voices: [{ id: 'w1', name: 'W1', lang: 'en-US' }] },
       ];
+      const sonioxVoices: TTSVoicesGroup[] = [
+        { id: 'sg', name: 'Soniox', voices: [{ id: 'Kayla', name: 'Kayla', lang: 'en' }] },
+      ];
+      vi.mocked(controller.ttsSonioxClient.getVoices).mockResolvedValue(sonioxVoices);
       vi.mocked(controller.ttsEdgeClient.getVoices).mockResolvedValue(edgeVoices);
       vi.mocked(controller.ttsWebClient.getVoices).mockResolvedValue(webVoices);
 
       const result = await controller.getVoices('en');
-      expect(result).toEqual([...edgeVoices, ...webVoices]);
+      expect(result).toEqual([...sonioxVoices, ...edgeVoices, ...webVoices]);
     });
 
     test('includes native voices when available', async () => {

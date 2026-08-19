@@ -62,6 +62,26 @@ export interface TTSClient {
   // Cached per-ordinal audio durations (seconds) for a section under the
   // current voice; empty when the client has no persistent cache.
   getSectionDurations?(section: number): Promise<Map<number, number>>;
+  canDownload?(): boolean;
+  warmSentence?(
+    section: number,
+    ordinal: number,
+    lang: string,
+    text: string,
+    signal?: AbortSignal,
+  ): Promise<boolean>;
+  compactCache?(): Promise<void>;
+  getSectionCacheStatuses?(): Promise<
+    Map<
+      number,
+      { total: number; recorded: number; packed: boolean; pinned: boolean; active: boolean }
+    >
+  >;
+  getCacheBytes?(): Promise<number>;
+  beginDownloadSections?(sections: number[]): Promise<void>;
+  completeDownloadSections?(sections: number[]): Promise<void>;
+  cancelDownloadSections?(sections: number[]): Promise<void>;
+  clearDownloads?(): Promise<void>;
   getVoiceId(): string;
   getSpeakingLang(): string;
   // Playback position within the currently audible sentence, in trimmed media

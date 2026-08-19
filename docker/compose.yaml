@@ -149,6 +149,18 @@ services:
       STORAGE_FIXED_QUOTA: ${STORAGE_FIXED_QUOTA:-1073741824}
       TRANSLATION_FIXED_QUOTA: ${TRANSLATION_FIXED_QUOTA:-50000}
       FONT_BASE_URL: ${FONT_BASE_URL:-}
+      # Server-only credential used by /api/tts/soniox. Never expose this as
+      # a NEXT_PUBLIC_* build argument or browser runtime setting.
+      SONIOX_API_KEY: ${SONIOX_API_KEY:-}
+      SONIOX_TTS_MAX_CONCURRENT: ${SONIOX_TTS_MAX_CONCURRENT:-2}
+      SONIOX_TTS_REQUESTS_PER_MINUTE: ${SONIOX_TTS_REQUESTS_PER_MINUTE:-90}
+      SONIOX_TTS_TOKENS_PER_MINUTE_PER_USER: ${SONIOX_TTS_TOKENS_PER_MINUTE_PER_USER:-20000}
+      SONIOX_TTS_TOKENS_PER_DAY: ${SONIOX_TTS_TOKENS_PER_DAY:-500000}
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
     depends_on:
       - kong
       - minio
