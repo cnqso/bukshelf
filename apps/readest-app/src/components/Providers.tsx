@@ -41,6 +41,7 @@ import { upgradeToKeychainIfAvailable } from '@/libs/crypto/passphrase';
 import { cryptoSession } from '@/libs/crypto/session';
 import { useAppLockStore } from '@/store/appLockStore';
 import { initSettingsSync } from '@/services/sync/replicaSettingsSync';
+import { getRuntimeConfig } from '@/services/runtimeConfig';
 
 // One-time, on first launch after this feature ships, decide how to handle
 // PostHog telemetry for the current install:
@@ -113,6 +114,7 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
   } = useAppLockStore();
   const iconSize = useDefaultIconSize();
   const [showTelemetryConsent, setShowTelemetryConsent] = useState(false);
+  const privacyMode = getRuntimeConfig()?.privacyMode === true;
   useSafeAreaInsets(); // Initialize safe area insets
   useSettingsSync(); // Adopt global settings broadcast by other windows (#4580)
 
@@ -144,12 +146,22 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
       appService.loadSettings().then(async (settings) => {
         const globalViewSettings = settings.globalViewSettings;
         const hadSettingsFile = await hadSettingsFilePromise.catch(() => false);
-        finalizeTelemetryDecision({
-          appService,
-          settings,
-          isNewUser: !hadSettingsFile,
-          onShowPrompt: () => setShowTelemetryConsent(true),
-        });
+        if (privacyMode) {
+          localStorage.setItem(TELEMETRY_OPT_OUT_KEY, 'true');
+          posthog.opt_out_capturing();
+          setTelemetryDecision('opt-out');
+          if (settings.telemetryEnabled) {
+            settings.telemetryEnabled = false;
+            await appService.saveSettings(settings);
+          }
+        } else {
+          finalizeTelemetryDecision({
+            appService,
+            settings,
+            isNewUser: !hadSettingsFile,
+            onShowPrompt: () => setShowTelemetryConsent(true),
+          });
+        }
         applyUILanguage(globalViewSettings.uiLanguage);
         // Seed the customTextureStore with the disk-loaded textures (preserving
         // their saved ids) so the boot-time applyBackgroundTexture below can
@@ -196,6 +208,7 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
     applyBackgroundTexture,
     applyEinkMode,
     initializeAppLock,
+    privacyMode,
   ]);
 
   // Sync-passphrase boot path: upgrade the passphrase store from
@@ -244,10 +257,12 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
                   <PassphrasePrompt />
                 </div>
                 <AppLockDialog />
-                <TelemetryConsentDialog
-                  open={showTelemetryConsent}
-                  onClose={() => setShowTelemetryConsent(false)}
-                />
+                {!privacyMode && (
+                  <TelemetryConsentDialog
+                    open={showTelemetryConsent}
+                    onClose={() => setShowTelemetryConsent(false)}
+                  />
+                )}
                 {showAppLockScreen && <AppLockScreen />}
               </CommandPaletteProvider>
             </DropdownProvider>

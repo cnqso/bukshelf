@@ -50,8 +50,14 @@ docker compose up -d
 ```
 
 this pulls `${READEST_IMAGE}` (default: `ghcr.io/readest/readest:latest`) instead of building the client locally.
-the web client now reads `SUPABASE_PUBLIC_URL`, `SUPABASE_ANON_KEY`, `API_BASE_URL`, `OBJECT_STORAGE_TYPE`, `STORAGE_FIXED_QUOTA`, `TRANSLATION_FIXED_QUOTA`, and `SELF_HOSTED_PREMIUM_FEATURES` from runtime
+the web client now reads `SUPABASE_PUBLIC_URL`, `SUPABASE_ANON_KEY`, `API_BASE_URL`, `OBJECT_STORAGE_TYPE`, `STORAGE_FIXED_QUOTA`, `TRANSLATION_FIXED_QUOTA`, `SELF_HOSTED_PREMIUM_FEATURES`, `SELF_HOSTED_PRIVACY_MODE`, and safe Reader AI model metadata from runtime
 container env, so custom self-hosted values work with pulled images.
+
+set `SELF_HOSTED_PRIVACY_MODE=true` to prevent PostHog from initializing. To
+enable Reader AI without exposing a credential to the browser, set
+`OPENROUTER_API_KEY`; chat and embedding requests then pass through authenticated
+server routes. The default guardrails are 2 concurrent requests, 30 requests per
+minute, 250,000 tokens per UTC day, and 2,048 output tokens per response.
 
 if you prefer Docker Hub, set `READEST_IMAGE` in `docker/.env`, for example:
 

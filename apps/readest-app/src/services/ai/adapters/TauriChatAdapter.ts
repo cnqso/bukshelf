@@ -7,6 +7,8 @@ import type { AISettings, ScoredChunk } from '../types';
 import type { RetrievalBackend } from './retrievalBackend';
 import type { ReedySourceStore } from './reedySourceStore';
 import type { RetrievedChunk } from '@/services/reedy/retrieval/BookRetriever';
+import { getRuntimeConfig } from '@/services/runtimeConfig';
+import { fetchWithAuth } from '@/utils/fetch';
 
 /**
  * Per-turn metadata the host (AIAssistant) needs to keep in sync with the
@@ -32,14 +34,18 @@ async function* streamViaApiRoute(
   settings: AISettings,
   abortSignal?: AbortSignal,
 ): AsyncGenerator<string> {
-  const response = await fetch('/api/ai/chat', {
+  const response = await fetchWithAuth('/api/ai/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       messages,
       system: systemPrompt,
-      apiKey: settings.aiGatewayApiKey,
-      model: settings.aiGatewayModel || 'google/gemini-2.5-flash-lite',
+      provider: settings.provider,
+      apiKey: settings.provider === 'ai-gateway' ? settings.aiGatewayApiKey : undefined,
+      model:
+        settings.provider === 'ai-gateway'
+          ? settings.aiGatewayModel || 'google/gemini-2.5-flash-lite'
+          : undefined,
     }),
     signal: abortSignal,
   });
@@ -101,7 +107,11 @@ export function createTauriAdapter(getOptions: () => TauriAdapterOptions): ChatM
           .join('\n'),
       }));
 
-      const useApiRoute = typeof window !== 'undefined' && settings.provider === 'ai-gateway';
+      const useApiRoute =
+        typeof window !== 'undefined' &&
+        (settings.provider === 'ai-gateway' ||
+          (settings.provider === 'openrouter' &&
+            getRuntimeConfig()?.openRouterServerEnabled === true));
 
       try {
         let text = '';

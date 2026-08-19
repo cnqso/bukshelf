@@ -38,6 +38,7 @@ export class AIGatewayProvider implements AIProvider {
       return createProxiedEmbeddingModel({
         apiKey: this.settings.aiGatewayApiKey!,
         model: embedModel,
+        provider: 'ai-gateway',
       });
     }
 

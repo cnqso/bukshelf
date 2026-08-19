@@ -6,6 +6,10 @@ export interface ReadestRuntimeConfig {
   storageFixedQuota?: number;
   translationFixedQuota?: number;
   selfHostedPremiumFeatures?: boolean;
+  privacyMode?: boolean;
+  openRouterServerEnabled?: boolean;
+  openRouterChatModel?: string;
+  openRouterEmbeddingModel?: string;
   fontBaseUrl?: string;
 }
 
@@ -48,6 +52,15 @@ export const getServerRuntimeConfig = (): ReadestRuntimeConfig => ({
   // so they can opt out of Readest Cloud's client-side plan gates. This does
   // not enable hosted infrastructure such as the inbound-email Worker.
   selfHostedPremiumFeatures: process.env['SELF_HOSTED_PREMIUM_FEATURES']?.toLowerCase() === 'true',
+  // Privacy mode is intentionally exposed as a boolean only. It disables
+  // product analytics in the web client without weakening sign-in or sync.
+  privacyMode: process.env['SELF_HOSTED_PRIVACY_MODE']?.toLowerCase() === 'true',
+  // The browser only needs to know whether the server has OpenRouter and
+  // which fixed models it will use. The API key remains server-only.
+  openRouterServerEnabled: Boolean(process.env['OPENROUTER_API_KEY']),
+  openRouterChatModel: process.env['OPENROUTER_CHAT_MODEL'] || 'google/gemini-3.6-flash',
+  openRouterEmbeddingModel:
+    process.env['OPENROUTER_EMBEDDING_MODEL'] || 'openai/text-embedding-3-small',
   // Base URL of the directory holding the self-hosted CJK webfont bundles.
   // Readest's own CDN only answers CORS for readest.com origins, so a
   // self-hosted deployment on a custom domain has to serve them itself (#5550).

@@ -4,6 +4,9 @@ import type { AIProvider, AISettings, AIProviderName } from '../types';
 import { aiLogger } from '../logger';
 import { AI_TIMEOUTS } from '../utils/retry';
 import { getAIFetch } from '../utils/httpFetch';
+import { getRuntimeConfig } from '@/services/runtimeConfig';
+import { fetchWithAuth } from '@/utils/fetch';
+import { createProxiedEmbeddingModel } from './ProxiedGatewayEmbedding';
 
 const DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
 const DEFAULT_MODEL = 'openai/gpt-4o-mini';
@@ -29,52 +32,71 @@ export class OpenRouterProvider implements AIProvider {
   requiresAuth = true;
 
   private settings: AISettings;
-  private client: ReturnType<typeof createOpenAICompatible>;
+  private client?: ReturnType<typeof createOpenAICompatible>;
   private baseUrl: string;
-  private apiKey: string;
+  private apiKey?: string;
+  private serverManaged: boolean;
   private httpFetch: typeof fetch;
 
   constructor(settings: AISettings) {
     this.settings = settings;
-    if (!settings.openrouterApiKey) {
+    this.serverManaged = getRuntimeConfig()?.openRouterServerEnabled === true;
+    if (!settings.openrouterApiKey && !this.serverManaged) {
       throw new Error('OpenRouter API key required');
     }
     this.apiKey = settings.openrouterApiKey;
     this.baseUrl = (settings.openrouterBaseUrl || DEFAULT_BASE_URL).replace(/\/+$/, '');
     this.httpFetch = getAIFetch();
-    this.client = createOpenAICompatible({
-      name: 'openrouter',
-      baseURL: this.baseUrl,
-      apiKey: this.apiKey,
-      // Optional OpenRouter app attribution. Harmless for other OpenAI-
-      // compatible backends (they ignore unknown headers).
-      headers: {
-        'HTTP-Referer': 'https://readest.com',
-        'X-Title': 'Readest',
-      },
-      // Route chat completions / embeddings through our environment-aware
-      // fetch so streaming responses bypass the renderer's CORS sandbox
-      // when running inside Tauri.
-      fetch: this.httpFetch,
-    });
+    if (this.apiKey) {
+      this.client = createOpenAICompatible({
+        name: 'openrouter',
+        baseURL: this.baseUrl,
+        apiKey: this.apiKey,
+        // Optional OpenRouter app attribution. Harmless for other OpenAI-
+        // compatible backends (they ignore unknown headers).
+        headers: {
+          'HTTP-Referer': 'https://readest.com',
+          'X-Title': 'Readest',
+        },
+        // Route chat completions / embeddings through our environment-aware
+        // fetch so streaming responses bypass the renderer's CORS sandbox
+        // when running inside Tauri.
+        fetch: this.httpFetch,
+      });
+    }
     aiLogger.provider.init('openrouter', settings.openrouterModel || DEFAULT_MODEL);
   }
 
   getModel(): LanguageModel {
+    if (!this.client) {
+      throw new Error('Server-managed OpenRouter chat must use the authenticated API route');
+    }
     const modelId = this.settings.openrouterModel || DEFAULT_MODEL;
     return this.client.chatModel(modelId);
   }
 
   getEmbeddingModel(): EmbeddingModel {
     const modelId = this.settings.openrouterEmbeddingModel || DEFAULT_EMBEDDING_MODEL;
+    if (this.serverManaged && typeof window !== 'undefined') {
+      return createProxiedEmbeddingModel({ model: modelId, provider: 'openrouter' });
+    }
+    if (!this.client) throw new Error('OpenRouter client is not configured');
     return this.client.textEmbeddingModel(modelId);
   }
 
   async isAvailable(): Promise<boolean> {
-    return !!this.apiKey;
+    return this.serverManaged || !!this.apiKey;
   }
 
   async healthCheck(): Promise<boolean> {
+    if (this.serverManaged) {
+      try {
+        const response = await fetchWithAuth('/api/ai/chat', { method: 'GET' });
+        return response.ok;
+      } catch {
+        return false;
+      }
+    }
     if (!this.apiKey) return false;
     try {
       const modelId = this.settings.openrouterModel || DEFAULT_MODEL;

@@ -15,6 +15,7 @@ import type { AISettings, AIProviderName } from '@/services/ai/types';
 import { exportReedyMetricsBundle } from '@/services/reedy/instrumentation';
 import { isTauriAppPlatform } from '@/services/environment';
 import { BoxedList, SettingLabel, SettingsRow, SettingsSwitchRow } from './primitives';
+import { getRuntimeConfig } from '@/services/runtimeConfig';
 
 type ConnectionStatus = 'idle' | 'testing' | 'success' | 'error';
 type CustomModelStatus = 'idle' | 'validating' | 'valid' | 'invalid';
@@ -71,15 +72,19 @@ const AIPanel: React.FC = () => {
   const _ = useTranslation();
   const { envConfig, appService } = useEnv();
   const { settings, setSettings, saveSettings } = useSettingsStore();
+  const runtimeConfig = getRuntimeConfig();
+  const serverManagedOpenRouter = runtimeConfig?.openRouterServerEnabled === true;
 
   const aiSettings: AISettings = settings?.aiSettings ?? DEFAULT_AI_SETTINGS;
 
-  const [enabled, setEnabled] = useState(aiSettings.enabled);
+  const [enabled, setEnabled] = useState(serverManagedOpenRouter || aiSettings.enabled);
   const [reedyEnabled, setReedyEnabled] = useState(aiSettings.reedy?.enabled ?? false);
   const [reedyAgentRuntime, setReedyAgentRuntime] = useState(
     (aiSettings.reedy?.runtime ?? 'mvp') === 'agent',
   );
-  const [provider, setProvider] = useState<AIProviderName>(aiSettings.provider);
+  const [provider, setProvider] = useState<AIProviderName>(
+    serverManagedOpenRouter ? 'openrouter' : aiSettings.provider,
+  );
   const [ollamaUrl, setOllamaUrl] = useState(aiSettings.ollamaBaseUrl);
   const [ollamaModel, setOllamaModel] = useState(aiSettings.ollamaModel);
   const [ollamaEmbeddingModel, setOllamaEmbeddingModel] = useState(aiSettings.ollamaEmbeddingModel);
@@ -92,9 +97,11 @@ const AIPanel: React.FC = () => {
   const [openrouterUrl, setOpenrouterUrl] = useState(
     aiSettings.openrouterBaseUrl ?? DEFAULT_AI_SETTINGS.openrouterBaseUrl ?? '',
   );
-  const [openrouterModel, setOpenrouterModel] = useState(aiSettings.openrouterModel ?? '');
+  const [openrouterModel, setOpenrouterModel] = useState(
+    runtimeConfig?.openRouterChatModel ?? aiSettings.openrouterModel ?? '',
+  );
   const [openrouterEmbeddingModel, setOpenrouterEmbeddingModel] = useState(
-    aiSettings.openrouterEmbeddingModel ?? '',
+    runtimeConfig?.openRouterEmbeddingModel ?? aiSettings.openrouterEmbeddingModel ?? '',
   );
   const [openrouterModels, setOpenrouterModels] = useState<OpenRouterModelInfo[]>([]);
   const [openrouterFetchingModels, setOpenrouterFetchingModels] = useState(false);
@@ -172,7 +179,7 @@ const AIPanel: React.FC = () => {
 
   // ---- OpenRouter: fetch /models list ----
   const fetchOpenrouterModelList = useCallback(async () => {
-    if (!enabled || !openrouterUrl || !openrouterKey) {
+    if (serverManagedOpenRouter || !enabled || !openrouterUrl || !openrouterKey) {
       setOpenrouterModels([]);
       return;
     }
@@ -194,14 +201,20 @@ const AIPanel: React.FC = () => {
       setOpenrouterFetchingModels(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, openrouterUrl, openrouterKey, openrouterModel]);
+  }, [serverManagedOpenRouter, enabled, openrouterUrl, openrouterKey, openrouterModel]);
 
   useEffect(() => {
-    if (provider === 'openrouter' && enabled && openrouterKey && openrouterUrl) {
+    if (
+      !serverManagedOpenRouter &&
+      provider === 'openrouter' &&
+      enabled &&
+      openrouterKey &&
+      openrouterUrl
+    ) {
       fetchOpenrouterModelList();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [provider, enabled, openrouterKey, openrouterUrl]);
+  }, [serverManagedOpenRouter, provider, enabled, openrouterKey, openrouterUrl]);
 
   useEffect(() => {
     isMounted.current = true;
@@ -258,35 +271,38 @@ const AIPanel: React.FC = () => {
   // ---- OpenRouter save effects ----
   useEffect(() => {
     if (!isMounted.current) return;
-    if (openrouterKey !== (aiSettings.openrouterApiKey ?? '')) {
+    if (!serverManagedOpenRouter && openrouterKey !== (aiSettings.openrouterApiKey ?? '')) {
       saveAiSetting('openrouterApiKey', openrouterKey);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openrouterKey]);
+  }, [serverManagedOpenRouter, openrouterKey]);
 
   useEffect(() => {
     if (!isMounted.current) return;
-    if (openrouterUrl !== (aiSettings.openrouterBaseUrl ?? '')) {
+    if (!serverManagedOpenRouter && openrouterUrl !== (aiSettings.openrouterBaseUrl ?? '')) {
       saveAiSetting('openrouterBaseUrl', openrouterUrl);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openrouterUrl]);
+  }, [serverManagedOpenRouter, openrouterUrl]);
 
   useEffect(() => {
     if (!isMounted.current) return;
-    if (openrouterModel !== (aiSettings.openrouterModel ?? '')) {
+    if (!serverManagedOpenRouter && openrouterModel !== (aiSettings.openrouterModel ?? '')) {
       saveAiSetting('openrouterModel', openrouterModel);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openrouterModel]);
+  }, [serverManagedOpenRouter, openrouterModel]);
 
   useEffect(() => {
     if (!isMounted.current) return;
-    if (openrouterEmbeddingModel !== (aiSettings.openrouterEmbeddingModel ?? '')) {
+    if (
+      !serverManagedOpenRouter &&
+      openrouterEmbeddingModel !== (aiSettings.openrouterEmbeddingModel ?? '')
+    ) {
       saveAiSetting('openrouterEmbeddingModel', openrouterEmbeddingModel);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openrouterEmbeddingModel]);
+  }, [serverManagedOpenRouter, openrouterEmbeddingModel]);
 
   // Get the effective model ID to use (either selected or custom)
   const getEffectiveModelId = useCallback(() => {
@@ -410,6 +426,7 @@ const AIPanel: React.FC = () => {
           label={_('Enable AI Assistant')}
           checked={enabled}
           onChange={() => setEnabled(!enabled)}
+          disabled={serverManagedOpenRouter}
         />
       </BoxedList>
 
@@ -421,7 +438,7 @@ const AIPanel: React.FC = () => {
             className='radio'
             checked={provider === 'ollama'}
             onChange={() => setProvider('ollama')}
-            disabled={!enabled}
+            disabled={!enabled || serverManagedOpenRouter}
           />
         </SettingsRow>
         <SettingsRow label={_('AI Gateway (Cloud)')} asLabel>
@@ -431,7 +448,7 @@ const AIPanel: React.FC = () => {
             className='radio'
             checked={provider === 'ai-gateway'}
             onChange={() => setProvider('ai-gateway')}
-            disabled={!enabled}
+            disabled={!enabled || serverManagedOpenRouter}
           />
         </SettingsRow>
         <SettingsRow label={_('OpenAI Compatible')} asLabel>
@@ -441,7 +458,7 @@ const AIPanel: React.FC = () => {
             className='radio'
             checked={provider === 'openrouter'}
             onChange={() => setProvider('openrouter')}
-            disabled={!enabled}
+            disabled={!enabled || serverManagedOpenRouter}
           />
         </SettingsRow>
       </BoxedList>
@@ -606,14 +623,32 @@ const AIPanel: React.FC = () => {
 
       {provider === 'openrouter' && (
         <BoxedList
-          title={_('OpenAI Compatible Configuration')}
-          description={_(
-            'Bring your own API key for OpenAI or any OpenAI-compatible endpoint. Also works with Together / Groq / vLLM / OpenRouter and other OpenAI-compatible services. The model list is fetched live from the endpoint you configure.',
-          )}
+          title={serverManagedOpenRouter ? _('Reader AI') : _('OpenAI Compatible Configuration')}
+          description={
+            serverManagedOpenRouter
+              ? _(
+                  'OpenRouter is configured and metered by this self-hosted server. The API key is never sent to your browser.',
+                )
+              : _(
+                  'Bring your own API key for OpenAI or any OpenAI-compatible endpoint. Also works with Together / Groq / vLLM / OpenRouter and other OpenAI-compatible services. The model list is fetched live from the endpoint you configure.',
+                )
+          }
           className={disabledSection}
         >
+          {serverManagedOpenRouter && (
+            <>
+              <SettingsRow label={_('Chat Model')}>
+                <span className='text-base-content/70 text-sm'>{openrouterModel}</span>
+              </SettingsRow>
+              <SettingsRow label={_('Embedding Model')}>
+                <span className='text-base-content/70 text-sm'>{openrouterEmbeddingModel}</span>
+              </SettingsRow>
+            </>
+          )}
           {/* API key */}
-          <div className='flex flex-col gap-2 pe-4 py-3'>
+          <div
+            className={clsx('flex flex-col gap-2 pe-4 py-3', serverManagedOpenRouter && 'hidden')}
+          >
             <div className='flex w-full items-center justify-between'>
               <SettingLabel>{_('API Key')}</SettingLabel>
               <a
@@ -637,7 +672,9 @@ const AIPanel: React.FC = () => {
           </div>
 
           {/* Base URL + refresh */}
-          <div className='flex flex-col gap-2 pe-4 py-3'>
+          <div
+            className={clsx('flex flex-col gap-2 pe-4 py-3', serverManagedOpenRouter && 'hidden')}
+          >
             <div className='flex w-full items-center justify-between'>
               <SettingLabel>{_('Base URL')}</SettingLabel>
               <button
@@ -665,7 +702,9 @@ const AIPanel: React.FC = () => {
           </div>
 
           {/* Model picker — populated from the endpoint's /models */}
-          <div className='flex flex-col gap-2 pe-4 py-3'>
+          <div
+            className={clsx('flex flex-col gap-2 pe-4 py-3', serverManagedOpenRouter && 'hidden')}
+          >
             <SettingLabel>{_('LLM Model')}</SettingLabel>
             {openrouterModels.length > 0 ? (
               <select
@@ -707,7 +746,9 @@ const AIPanel: React.FC = () => {
               selects share one list and the user picks the right one.
               Falls back to free text when the list isn't loaded yet, so
               the user can still type a known ID before refreshing. */}
-          <div className='flex flex-col gap-2 pe-4 py-3'>
+          <div
+            className={clsx('flex flex-col gap-2 pe-4 py-3', serverManagedOpenRouter && 'hidden')}
+          >
             <SettingLabel>{_('Embedding Model')}</SettingLabel>
             {openrouterModels.length > 0 ? (
               <select

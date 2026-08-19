@@ -27,6 +27,7 @@ import {
 import { DEFAULT_AI_SETTINGS } from './ai/constants';
 import { getTargetLang, isCJKEnv } from '@/utils/misc';
 import { safeLoadJSON, safeSaveJSON } from './persistence';
+import { getRuntimeConfig } from './runtimeConfig';
 
 export interface Context {
   fs: FileSystem;
@@ -161,6 +162,18 @@ export async function loadSettings(ctx: Context): Promise<SystemSettings> {
     ...DEFAULT_AI_SETTINGS,
     ...settings.aiSettings,
   };
+  const runtimeConfig = getRuntimeConfig();
+  if (runtimeConfig?.openRouterServerEnabled) {
+    settings.aiSettings = {
+      ...settings.aiSettings,
+      enabled: true,
+      provider: 'openrouter',
+      openrouterApiKey: undefined,
+      openrouterModel: runtimeConfig.openRouterChatModel,
+      openrouterEmbeddingModel: runtimeConfig.openRouterEmbeddingModel,
+    };
+  }
+  if (runtimeConfig?.privacyMode) settings.telemetryEnabled = false;
 
   settings.localBooksDir = await ctx.fs.getPrefix('Books');
 

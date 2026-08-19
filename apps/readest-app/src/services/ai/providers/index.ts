@@ -2,6 +2,7 @@ import { OllamaProvider } from './OllamaProvider';
 import { AIGatewayProvider } from './AIGatewayProvider';
 import { OpenRouterProvider } from './OpenRouterProvider';
 import type { AIProvider, AISettings } from '../types';
+import { getRuntimeConfig } from '@/services/runtimeConfig';
 
 export { OllamaProvider, AIGatewayProvider, OpenRouterProvider };
 
@@ -15,7 +16,7 @@ export function getAIProvider(settings: AISettings): AIProvider {
       }
       return new AIGatewayProvider(settings);
     case 'openrouter':
-      if (!settings.openrouterApiKey) {
+      if (!settings.openrouterApiKey && !getRuntimeConfig()?.openRouterServerEnabled) {
         throw new Error('API key required for OpenRouter');
       }
       return new OpenRouterProvider(settings);

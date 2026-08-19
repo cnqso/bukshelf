@@ -27,6 +27,7 @@ import AnnotationToolbarCustomizer from './AnnotationToolbarCustomizer';
 import { DEFAULT_ANNOTATION_TOOLBAR_ITEMS } from '@/utils/annotationToolbar';
 import { canShareText } from '@/utils/share';
 import { optInTelemetry, optOutTelemetry } from '@/utils/telemetry';
+import { getRuntimeConfig } from '@/services/runtimeConfig';
 
 const ControlPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterReset }) => {
   const _ = useTranslation();
@@ -76,6 +77,7 @@ const ControlPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterRes
   const resetToDefaults = useResetViewSettings();
   const pageTurnerResetRef = useRef<() => void>(() => {});
   const canShare = canShareText(appService);
+  const privacyMode = getRuntimeConfig()?.privacyMode === true;
 
   // The layered styles need an engine with full View Transitions support or
   // the Tauri captured-turn fallback; engines like iOS 18 WebKit crash on
@@ -562,14 +564,16 @@ const ControlPanel: React.FC<SettingsPanelPanelProp> = ({ bookKey, onRegisterRes
         />
       </BoxedList>
 
-      <BoxedList title={_('Privacy')} data-setting-id='settings.control.telemetry'>
-        <SettingsSwitchRow
-          label={_('Help improve Readest')}
-          description={isTelemetryEnabled ? _('Sharing anonymized statistics') : ''}
-          checked={isTelemetryEnabled}
-          onChange={toggleTelemetry}
-        />
-      </BoxedList>
+      {!privacyMode && (
+        <BoxedList title={_('Privacy')} data-setting-id='settings.control.telemetry'>
+          <SettingsSwitchRow
+            label={_('Help improve Readest')}
+            description={isTelemetryEnabled ? _('Sharing anonymized statistics') : ''}
+            checked={isTelemetryEnabled}
+            onChange={toggleTelemetry}
+          />
+        </BoxedList>
+      )}
     </div>
   );
 };

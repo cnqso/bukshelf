@@ -1,8 +1,11 @@
 import type { EmbeddingModel } from 'ai';
+import type { AIProviderName } from '../types';
+import { fetchWithAuth } from '@/utils/fetch';
 
 interface ProxiedEmbeddingOptions {
-  apiKey: string;
+  apiKey?: string;
   model?: string;
+  provider?: Extract<AIProviderName, 'ai-gateway' | 'openrouter'>;
 }
 
 export function createProxiedEmbeddingModel(options: ProxiedEmbeddingOptions): EmbeddingModel {
@@ -16,13 +19,14 @@ export function createProxiedEmbeddingModel(options: ProxiedEmbeddingOptions): E
     supportsParallelCalls: false,
 
     async doEmbed({ values }: { values: string[] }) {
-      const response = await fetch('/api/ai/embed', {
+      const response = await fetchWithAuth('/api/ai/embed', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           texts: values,
           single: values.length === 1,
           apiKey: options.apiKey,
+          provider: options.provider || 'ai-gateway',
         }),
       });
 
