@@ -139,6 +139,30 @@ describe('CachingProvider', () => {
     expect(inner.synthesize).toHaveBeenCalledTimes(1);
   });
 
+  test('a wedged cache read times out and disables cache for the session', async () => {
+    store.get.mockImplementation(() => new Promise(() => {}));
+    provider = new CachingProvider(inner, store, { operationTimeoutMs: 10 });
+
+    await expect(provider.synthesize(req(), signal())).resolves.toMatchObject({
+      boundaries: BOUNDARIES,
+    });
+    await provider.synthesize(req('next'), signal());
+
+    expect(inner.synthesize).toHaveBeenCalledTimes(2);
+    expect(store.get).toHaveBeenCalledTimes(1);
+    expect(store.put).not.toHaveBeenCalled();
+  });
+
+  test('a wedged cache write never holds synthesized audio hostage', async () => {
+    store.put.mockImplementation(() => new Promise(() => {}));
+    provider = new CachingProvider(inner, store, { operationTimeoutMs: 10 });
+
+    await expect(provider.synthesize(req(), signal())).resolves.toMatchObject({
+      boundaries: BOUNDARIES,
+    });
+    expect(inner.synthesize).toHaveBeenCalledTimes(1);
+  });
+
   test('shutdown closes the store and chains the inner provider', async () => {
     const close = vi.fn().mockResolvedValue(undefined);
     const innerShutdown = vi.fn().mockResolvedValue(undefined);

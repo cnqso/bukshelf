@@ -54,19 +54,35 @@ export interface TTSCacheStore {
   close?(): Promise<void>;
 }
 
+export interface CachingProviderOptions {
+  operationTimeoutMs?: number;
+}
+
+const DEFAULT_CACHE_OPERATION_TIMEOUT_MS = 1500;
+
+class TTSCacheTimeoutError extends Error {
+  constructor(operation: string, timeoutMs: number) {
+    super(`TTS cache ${operation} timed out after ${timeoutMs}ms`);
+    this.name = 'TTSCacheTimeoutError';
+  }
+}
+
 export const computeTTSCacheKey = (providerId: string, req: SpeechSynthesisRequest): string =>
   md5(JSON.stringify(['tts-v1', providerId, req.lang, req.voice, req.pitch, req.text]));
 
 export class CachingProvider implements SpeechProvider {
   readonly #inner: SpeechProvider;
   readonly #store: TTSCacheStore;
+  readonly #operationTimeoutMs: number;
+  #cacheAvailable = true;
   // Dedups whole get-or-synthesize flows: the playback scheduler and the
   // preloader routinely race the same sentence.
   readonly #inflight = new Map<string, Promise<SpeechSynthesisResult>>();
 
-  constructor(inner: SpeechProvider, store: TTSCacheStore) {
+  constructor(inner: SpeechProvider, store: TTSCacheStore, options: CachingProviderOptions = {}) {
     this.#inner = inner;
     this.#store = store;
+    this.#operationTimeoutMs = options.operationTimeoutMs ?? DEFAULT_CACHE_OPERATION_TIMEOUT_MS;
   }
 
   get id(): string {
@@ -122,24 +138,51 @@ export class CachingProvider implements SpeechProvider {
     signal: AbortSignal,
   ): Promise<SpeechSynthesisResult> {
     try {
-      const cached = await this.#store.get(key);
+      const cached = this.#cacheAvailable
+        ? await this.#withTimeout(this.#store.get(key), 'read')
+        : null;
       if (cached) {
         return { audio: cached.audio.slice(0), boundaries: cached.boundaries };
       }
     } catch (err) {
-      console.warn('TTS cache read failed; synthesizing instead', err);
+      this.#disableCache('read', err);
     }
     const result = await this.#inner.synthesize(req, signal);
+    if (!this.#cacheAvailable) return result;
     try {
-      await this.#store.put(
-        key,
-        { audio: result.audio, boundaries: result.boundaries },
-        { provider: this.#inner.id, voice: req.voice },
+      await this.#withTimeout(
+        this.#store.put(
+          key,
+          { audio: result.audio, boundaries: result.boundaries },
+          { provider: this.#inner.id, voice: req.voice },
+        ),
+        'write',
       );
     } catch (err) {
-      console.warn('TTS cache write failed; continuing uncached', err);
+      this.#disableCache('write', err);
     }
     return result;
+  }
+
+  async #withTimeout<T>(operation: Promise<T>, label: string): Promise<T> {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(
+        () => reject(new TTSCacheTimeoutError(label, this.#operationTimeoutMs)),
+        this.#operationTimeoutMs,
+      );
+    });
+    try {
+      return await Promise.race([operation, timeout]);
+    } finally {
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
+    }
+  }
+
+  #disableCache(operation: string, error: unknown): void {
+    if (!this.#cacheAvailable) return;
+    this.#cacheAvailable = false;
+    console.warn(`TTS cache ${operation} failed; continuing uncached for this session`, error);
   }
 
   // Ordered sentence labels for a section, from the timeline enumeration.

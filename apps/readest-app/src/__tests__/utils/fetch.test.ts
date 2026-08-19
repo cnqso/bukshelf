@@ -194,4 +194,20 @@ describe('fetchWithAuth', () => {
       'Request failed',
     );
   });
+
+  it('extracts messages from structured API errors instead of stringifying objects', async () => {
+    vi.mocked(getAccessToken).mockResolvedValueOnce('token');
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 429,
+      statusText: 'Too Many Requests',
+      json: async () => ({
+        error: { message: 'Soniox TTS usage limit reached', type: 'queue_limit' },
+      }),
+    });
+
+    await expect(fetchWithAuth('https://api.example.com', { method: 'GET' })).rejects.toThrow(
+      'Soniox TTS usage limit reached',
+    );
+  });
 });

@@ -90,7 +90,10 @@ export async function POST(request: NextRequest) {
   const userId = String(user.id);
   const characters = input.length;
   const estimatedTokens = estimateSonioxTokens(input);
-  const metering = sonioxUsageMeter.begin({ userId, characters, estimatedTokens });
+  const metering = await sonioxUsageMeter.acquire(
+    { userId, characters, estimatedTokens },
+    request.signal,
+  );
   if (!metering.accepted) {
     console.warn(
       JSON.stringify({
@@ -108,15 +111,21 @@ export async function POST(request: NextRequest) {
         usage: metering.snapshot,
       }),
     );
+    const cancelled = metering.reason === 'request_cancelled';
     return NextResponse.json(
       {
         error: {
-          message: 'Soniox TTS usage limit reached',
+          message: cancelled
+            ? 'Soniox TTS request was cancelled'
+            : 'Soniox TTS usage limit reached',
           type: metering.reason,
           retryAfterSeconds: metering.retryAfterSeconds,
         },
       },
-      { status: 429, headers: { 'Retry-After': String(metering.retryAfterSeconds) } },
+      {
+        status: cancelled ? 499 : 429,
+        headers: cancelled ? undefined : { 'Retry-After': String(metering.retryAfterSeconds) },
+      },
     );
   }
 
@@ -135,6 +144,7 @@ export async function POST(request: NextRequest) {
     JSON.stringify({
       ...logBase,
       event: 'started',
+      queueWaitMs: startedAt - metering.lease.queuedAt,
       usage: metering.snapshot,
     }),
   );

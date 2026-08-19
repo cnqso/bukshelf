@@ -209,9 +209,10 @@ language, character count, estimated tokens, latency, status, audio bytes, and
 cumulative usage; the synthesized book text is not logged. The compose setup
 rotates client logs after five 20 MB files.
 
-The defaults allow two concurrent requests, 90 requests per minute, 20,000
-estimated tokens per user per minute, and 500,000 estimated tokens per UTC day.
-Override them with `SONIOX_TTS_MAX_CONCURRENT`,
+The defaults allow two concurrent upstream requests with 32 waiting requests,
+90 requests per minute, 20,000 estimated tokens per user per minute, and
+500,000 estimated tokens per UTC day.
+Override them with `SONIOX_TTS_MAX_CONCURRENT`, `SONIOX_TTS_MAX_QUEUE_SIZE`,
 `SONIOX_TTS_REQUESTS_PER_MINUTE`,
 `SONIOX_TTS_TOKENS_PER_MINUTE_PER_USER`, and `SONIOX_TTS_TOKENS_PER_DAY`.
 
