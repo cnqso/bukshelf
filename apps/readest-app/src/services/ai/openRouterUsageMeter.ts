@@ -6,6 +6,13 @@ export interface OpenRouterUsageSnapshot {
   actualOutputTokensToday: number;
   actualTotalTokensToday: number;
   rejectedRequestsToday: number;
+  totalRequestsToday: number;
+  limits: {
+    maxConcurrent: number;
+    requestsPerMinute: number;
+    tokensPerDay: number;
+    maxOutputTokens: number;
+  };
   day: string;
 }
 
@@ -27,6 +34,7 @@ export class OpenRouterUsageMeter {
   #actualOutputTokensToday = 0;
   #actualTotalTokensToday = 0;
   #rejectedRequestsToday = 0;
+  #totalRequestsToday = 0;
 
   acquire(estimatedInputTokens: number):
     | { accepted: true; lease: Lease; snapshot: OpenRouterUsageSnapshot }
@@ -64,6 +72,7 @@ export class OpenRouterUsageMeter {
     }
     this.#activeRequests += 1;
     this.#requestTimes.push(now);
+    this.#totalRequestsToday += 1;
     this.#estimatedInputTokensToday += estimatedInputTokens;
     return { accepted: true, lease: { estimatedInputTokens }, snapshot: this.snapshot() };
   }
@@ -99,6 +108,13 @@ export class OpenRouterUsageMeter {
       actualOutputTokensToday: this.#actualOutputTokensToday,
       actualTotalTokensToday: this.#actualTotalTokensToday,
       rejectedRequestsToday: this.#rejectedRequestsToday,
+      totalRequestsToday: this.#totalRequestsToday,
+      limits: {
+        maxConcurrent: numberFromEnv('OPENROUTER_MAX_CONCURRENT', 2),
+        requestsPerMinute: numberFromEnv('OPENROUTER_REQUESTS_PER_MINUTE', 30),
+        tokensPerDay: numberFromEnv('OPENROUTER_TOKENS_PER_DAY', 250_000),
+        maxOutputTokens: numberFromEnv('OPENROUTER_MAX_OUTPUT_TOKENS', 2_048),
+      },
       day: this.#day,
     };
   }
@@ -112,6 +128,7 @@ export class OpenRouterUsageMeter {
     this.#actualOutputTokensToday = 0;
     this.#actualTotalTokensToday = 0;
     this.#rejectedRequestsToday = 0;
+    this.#totalRequestsToday = 0;
   }
 }
 

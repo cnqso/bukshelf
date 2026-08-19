@@ -38,6 +38,8 @@ export interface SonioxUsageSnapshot {
   totalRequests: number;
   totalCharacters: number;
   totalEstimatedTokens: number;
+  dailyRequests: number;
+  dailyCharacters: number;
   dailyEstimatedTokens: number;
   minuteRequests: number;
   limits: SonioxUsageLimits;
@@ -75,6 +77,8 @@ export class SonioxUsageMeter {
   #totalRequests = 0;
   #totalCharacters = 0;
   #totalEstimatedTokens = 0;
+  #dailyRequests = 0;
+  #dailyCharacters = 0;
   #dailyEstimatedTokens = 0;
   #dayStartedAt: number;
   #minuteStartedAt: number;
@@ -128,6 +132,8 @@ export class SonioxUsageMeter {
     this.#totalRequests += 1;
     this.#totalCharacters += usage.characters;
     this.#totalEstimatedTokens += usage.estimatedTokens;
+    this.#dailyRequests += 1;
+    this.#dailyCharacters += usage.characters;
     this.#dailyEstimatedTokens += usage.estimatedTokens;
 
     const lease: SonioxUsageLease = {
@@ -154,6 +160,8 @@ export class SonioxUsageMeter {
       totalRequests: this.#totalRequests,
       totalCharacters: this.#totalCharacters,
       totalEstimatedTokens: this.#totalEstimatedTokens,
+      dailyRequests: this.#dailyRequests,
+      dailyCharacters: this.#dailyCharacters,
       dailyEstimatedTokens: this.#dailyEstimatedTokens,
       minuteRequests: this.#minuteRequests,
       limits: { ...this.#limits },
@@ -223,6 +231,8 @@ export class SonioxUsageMeter {
     const dayStartedAt = this.#startOfUtcDay(now);
     if (dayStartedAt !== this.#dayStartedAt) {
       this.#dayStartedAt = dayStartedAt;
+      this.#dailyRequests = 0;
+      this.#dailyCharacters = 0;
       this.#dailyEstimatedTokens = 0;
     }
     for (const [userId, usage] of this.#userMinuteUsage) {

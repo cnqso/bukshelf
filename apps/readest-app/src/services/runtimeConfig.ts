@@ -7,6 +7,7 @@ export interface ReadestRuntimeConfig {
   translationFixedQuota?: number;
   selfHostedPremiumFeatures?: boolean;
   privacyMode?: boolean;
+  sonioxServerEnabled?: boolean;
   openRouterServerEnabled?: boolean;
   openRouterChatModel?: string;
   openRouterEmbeddingModel?: string;
@@ -55,6 +56,7 @@ export const getServerRuntimeConfig = (): ReadestRuntimeConfig => ({
   // Privacy mode is intentionally exposed as a boolean only. It disables
   // product analytics in the web client without weakening sign-in or sync.
   privacyMode: process.env['SELF_HOSTED_PRIVACY_MODE']?.toLowerCase() === 'true',
+  sonioxServerEnabled: Boolean(process.env['SONIOX_API_KEY']),
   // The browser only needs to know whether the server has OpenRouter and
   // which fixed models it will use. The API key remains server-only.
   openRouterServerEnabled: Boolean(process.env['OPENROUTER_API_KEY']),

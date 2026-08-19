@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { PiUserCircle, PiUserCircleCheck, PiGear } from 'react-icons/pi';
+import { PiChartLine, PiUserCircle, PiUserCircleCheck, PiGear } from 'react-icons/pi';
 import { PiSun, PiMoon } from 'react-icons/pi';
 import { TbSunMoon } from 'react-icons/tb';
 import { MdCloudSync, MdSync, MdSyncProblem, MdOutlineSensors } from 'react-icons/md';
@@ -48,6 +48,7 @@ import MenuItem from '@/components/MenuItem';
 import Quota from '@/components/Quota';
 import Menu from '@/components/Menu';
 import { type AppLockDialogMode, useAppLockStore } from '@/store/appLockStore';
+import { getRuntimeConfig } from '@/services/runtimeConfig';
 
 interface SettingsMenuProps {
   onPullLibrary: (fullRefresh?: boolean, verbose?: boolean) => void;
@@ -72,6 +73,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onPullLibrary, setIsDropdow
     settings.savedBookCoverForLockScreen || '',
   );
   const iconSize = useResponsiveSize(16);
+  const runtimeConfig = getRuntimeConfig();
 
   const [isRefreshingMetadata, setIsRefreshingMetadata] = useState(false);
   const [refreshMetadataProgress, setRefreshMetadataProgress] = useState('');
@@ -195,6 +197,11 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onPullLibrary, setIsDropdow
   const handleManageCache = () => {
     setIsDropdownOpen?.(false);
     setCacheManagerDialogVisible(true);
+  };
+
+  const handleUsageDashboard = () => {
+    setIsDropdownOpen?.(false);
+    router.push('/usage');
   };
 
   const handleRefreshMetadata = async () => {
@@ -437,6 +444,13 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ onPullLibrary, setIsDropdow
       <MenuItem label={_('Advanced Settings')}>
         <ul className='ms-0 flex flex-col ps-0 before:hidden'>
           <MenuItem label={_('Backup & Restore')} onClick={handleBackupRestore} />
+          {(runtimeConfig?.sonioxServerEnabled || runtimeConfig?.openRouterServerEnabled) && (
+            <MenuItem
+              label={_('Usage & Costs')}
+              Icon={PiChartLine}
+              onClick={handleUsageDashboard}
+            />
+          )}
           {appService?.canCustomizeRootDir && (
             <MenuItem label={_('Change Data Location')} onClick={handleSetRootDir} />
           )}
