@@ -5,6 +5,7 @@ export interface ReadestRuntimeConfig {
   objectStorageType?: string;
   storageFixedQuota?: number;
   translationFixedQuota?: number;
+  selfHostedPremiumFeatures?: boolean;
   fontBaseUrl?: string;
 }
 
@@ -43,6 +44,10 @@ export const getServerRuntimeConfig = (): ReadestRuntimeConfig => ({
       process.env['TRANSLATION_FIXED_QUOTA'] ?? process.env['NEXT_PUBLIC_TRANSLATION_FIXED_QUOTA'];
     return raw ? parseInt(raw, 10) : undefined;
   })(),
+  // Self-hosters provide their own storage, TTS and third-party sync backends,
+  // so they can opt out of Readest Cloud's client-side plan gates. This does
+  // not enable hosted infrastructure such as the inbound-email Worker.
+  selfHostedPremiumFeatures: process.env['SELF_HOSTED_PREMIUM_FEATURES']?.toLowerCase() === 'true',
   // Base URL of the directory holding the self-hosted CJK webfont bundles.
   // Readest's own CDN only answers CORS for readest.com origins, so a
   // self-hosted deployment on a custom domain has to serve them itself (#5550).

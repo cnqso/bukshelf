@@ -1,4 +1,4 @@
-import { describe, expect, test, vi, beforeEach } from 'vitest';
+import { afterEach, describe, expect, test, vi, beforeEach } from 'vitest';
 
 vi.mock('@/utils/settingsSync', () => ({
   broadcastGlobalSettings: vi.fn(),
@@ -15,6 +15,8 @@ import type { SystemSettings } from '@/types/settings';
 import type { EnvConfigType } from '@/services/environment';
 
 const mockBroadcastGlobalSettings = vi.mocked(broadcastGlobalSettings);
+
+afterEach(() => vi.unstubAllEnvs());
 
 describe('isCloudSyncInPlan', () => {
   test('any paid plan can use cloud sync', () => {
@@ -35,6 +37,11 @@ describe('isCloudSyncAllowed (premium paywall)', () => {
     expect(isCloudSyncAllowed('plus')).toBe(true);
     expect(isCloudSyncAllowed('pro')).toBe(true);
     expect(isCloudSyncAllowed('purchase')).toBe(true);
+  });
+
+  test('self-hosters can supply the feature infrastructure themselves', () => {
+    vi.stubEnv('SELF_HOSTED_PREMIUM_FEATURES', 'true');
+    expect(isCloudSyncAllowed('free')).toBe(true);
   });
 });
 

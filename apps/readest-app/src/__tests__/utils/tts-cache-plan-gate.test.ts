@@ -1,6 +1,8 @@
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { TTS_CACHE_REQUIRES_PREMIUM, isTTSCacheAllowed, isTTSCacheInPlan } from '@/utils/access';
+
+afterEach(() => vi.unstubAllEnvs());
 
 describe('isTTSCacheInPlan', () => {
   test('any paid plan can use the offline TTS audio cache', () => {
@@ -21,5 +23,10 @@ describe('isTTSCacheAllowed (premium paywall)', () => {
     expect(isTTSCacheAllowed('plus')).toBe(true);
     expect(isTTSCacheAllowed('pro')).toBe(true);
     expect(isTTSCacheAllowed('purchase')).toBe(true);
+  });
+
+  test('self-hosters can supply the feature infrastructure themselves', () => {
+    vi.stubEnv('SELF_HOSTED_PREMIUM_FEATURES', 'true');
+    expect(isTTSCacheAllowed('free')).toBe(true);
   });
 });

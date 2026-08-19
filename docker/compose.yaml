@@ -148,6 +148,7 @@ services:
       OBJECT_STORAGE_TYPE: ${OBJECT_STORAGE_TYPE:-s3}
       STORAGE_FIXED_QUOTA: ${STORAGE_FIXED_QUOTA:-1073741824}
       TRANSLATION_FIXED_QUOTA: ${TRANSLATION_FIXED_QUOTA:-50000}
+      SELF_HOSTED_PREMIUM_FEATURES: ${SELF_HOSTED_PREMIUM_FEATURES:-false}
       FONT_BASE_URL: ${FONT_BASE_URL:-}
       # Server-only credential used by /api/tts/soniox. Never expose this as
       # a NEXT_PUBLIC_* build argument or browser runtime setting.

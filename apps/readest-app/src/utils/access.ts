@@ -67,13 +67,17 @@ export const isCloudSyncInPlan = (plan: UserPlan): boolean =>
  */
 export const CLOUD_SYNC_REQUIRES_PREMIUM = true;
 
+export const hasSelfHostedPremiumFeatures = (): boolean =>
+  getRuntimeConfig()?.selfHostedPremiumFeatures === true ||
+  process.env['SELF_HOSTED_PREMIUM_FEATURES']?.toLowerCase() === 'true';
+
 /**
  * Whether third-party cloud sync is available for a plan. Falls back to the
  * {@link isCloudSyncInPlan} paywall while {@link CLOUD_SYNC_REQUIRES_PREMIUM}
  * is on; flipping the switch off ungates every plan.
  */
 export const isCloudSyncAllowed = (plan: UserPlan): boolean =>
-  !CLOUD_SYNC_REQUIRES_PREMIUM || isCloudSyncInPlan(plan);
+  hasSelfHostedPremiumFeatures() || !CLOUD_SYNC_REQUIRES_PREMIUM || isCloudSyncInPlan(plan);
 
 /**
  * Plans that include the offline TTS audio cache — pre-downloading a book's
@@ -96,7 +100,7 @@ export const isTTSCacheInPlan = (plan: UserPlan): boolean =>
 export const TTS_CACHE_REQUIRES_PREMIUM = true;
 
 export const isTTSCacheAllowed = (plan: UserPlan): boolean =>
-  !TTS_CACHE_REQUIRES_PREMIUM || isTTSCacheInPlan(plan);
+  hasSelfHostedPremiumFeatures() || !TTS_CACHE_REQUIRES_PREMIUM || isTTSCacheInPlan(plan);
 
 export const STORAGE_QUOTA_GRACE_BYTES = 10 * 1024 * 1024; // 10 MB grace
 
