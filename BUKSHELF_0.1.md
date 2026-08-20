@@ -89,13 +89,17 @@ browser/native smoke test appropriate to the changed behavior.
 - The public shelf frontend calls Bun directly. Its former Next.js API routes
   have been removed.
 - As a temporary migration adapter, Bun reads the existing Postgres data and
-  MinIO objects directly; public responses expose only title, author, opaque
-  identifiers, and validated cover image bytes.
+  local filesystem objects directly; Postgres still supplies public catalog
+  metadata. Responses expose only title, author, opaque identifiers, and
+  validated cover image bytes.
 - Bun now owns the single owner's password hash and session registry in
   `bukshelf.sqlite`. Web login uses an HttpOnly cookie plus a bearer token for
   the existing frontend API contract; login no longer calls GoTrue.
 - The existing owner's UUID, email, and bcrypt hash were imported once without
   copying or logging a plaintext password. Fresh installs use `auth:setup`.
+- The unified data directory now contains `bukshelf.sqlite`, imported books,
+  imported covers, and temporary writes. Public cover delivery no longer reads
+  MinIO and remains available when MinIO is stopped.
 - The legacy stack and Bun server have been smoke-tested concurrently without
   changing the existing Postgres or MinIO data volumes.
 
@@ -149,20 +153,21 @@ Two slices can now proceed independently from commit `b711b6a59`:
 1. **Codex: single-owner authentication (complete).** First-run setup, password
    hashing, cookie and bearer sessions, logout, legacy credential import, and
    CLI password reset now run in Bun.
-2. **Claude: filesystem object storage.** Replace MinIO reads with an ordinary
-   `/data` content store, provide an idempotent importer for existing objects,
-   and switch the already-migrated public cover endpoint to local files.
+2. **Claude: filesystem object storage (complete).** MinIO objects have an
+   idempotent importer into the ordinary data directory, and the public cover
+   endpoint now serves validated local files with the CORP header required by
+   the COEP-isolated frontend.
 
 The storage lane is deliberately metadata-light: it does not migrate Postgres
 library records, authenticated upload/download routes, or synchronization. That
 keeps it independent from the authentication work while removing one complete
 piece of MinIO from the live path.
 
-## Claude Handoff: Filesystem Storage
+## Claude Lane Record: Filesystem Storage
 
-Start a branch named `claude/filesystem-storage` from commit `b711b6a59`. Do not
-merge unrelated upstream work into it. Produce small commits so integration can
-cherry-pick the storage foundation separately from route wiring if necessary.
+The `claude/filesystem-storage` lane started from `b711b6a59` and was integrated
+after the authentication lane as five small commits, keeping route wiring
+separate from the storage foundation.
 
 ### Objective
 
@@ -224,3 +229,14 @@ Do not modify the public API response schema or expose book hashes/file keys.
    validation, and `git diff --check` pass.
 6. The worktree contains no imported books, covers, credentials, logs, or other
    runtime data. Commit the completed lane and report its commit hashes.
+
+All six checks passed after integration. The combined suite has 30 passing Bun
+tests, the production browser renders the real filesystem cover with MinIO
+stopped, and the primary checkout contains no tracked runtime data.
+
+## Next Step
+
+Move authenticated book and cover upload/download routes to Bun and the local
+object store. Postgres may remain the temporary metadata source for that slice;
+the goal is to remove MinIO from the signed-in reader path before migrating
+library metadata and synchronization into SQLite.
