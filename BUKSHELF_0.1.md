@@ -126,3 +126,87 @@ that have actually migrated.
 ## Next Step
 
 Move single-owner bootstrap, login, sessions, and CLI password reset into Bun.
+
+## Parallel Work Lanes
+
+Two slices can now proceed independently from commit `b711b6a59`:
+
+1. **Codex: single-owner authentication.** Implement first-run password setup,
+   password hashing, cookie and bearer sessions, logout, and CLI password reset.
+   Preserve the current frontend auth contract where useful, but remove Supabase
+   auth from the completed path.
+2. **Claude: filesystem object storage.** Replace MinIO reads with an ordinary
+   `/data` content store, provide an idempotent importer for existing objects,
+   and switch the already-migrated public cover endpoint to local files.
+
+The storage lane is deliberately metadata-light: it does not migrate Postgres
+library records, authenticated upload/download routes, or synchronization. That
+keeps it independent from the authentication work while removing one complete
+piece of MinIO from the live path.
+
+## Claude Handoff: Filesystem Storage
+
+Start a branch named `claude/filesystem-storage` from commit `b711b6a59`. Do not
+merge unrelated upstream work into it. Produce small commits so integration can
+cherry-pick the storage foundation separately from route wiring if necessary.
+
+### Objective
+
+After one explicit import command, Bun must serve public covers from
+`BUKSHELF_DATA_DIR` without contacting MinIO. The import is a development
+migration, not a permanent compatibility layer.
+
+### Required data layout
+
+```text
+$BUKSHELF_DATA_DIR/
+├── books/<book-hash>/book.<format>
+├── covers/<book-hash>/cover.<image-extension>
+└── tmp/
+```
+
+Keep paths deterministic and independent of the legacy user UUID. Reject path
+traversal, symlinks escaping the data root, unsupported cover formats, and
+untrusted absolute paths. Writes must use a temporary file followed by an
+atomic rename.
+
+### Scope
+
+- Add a small Bun-native filesystem object-store module and focused tests.
+- Add an idempotent CLI import command that reads live, non-deleted `files` rows
+  from legacy Postgres and copies their MinIO objects into the layout above.
+- Support at least EPUB/PDF book objects and PNG/JPEG/WebP/GIF covers. Report
+  copied, skipped, missing, and failed counts without printing credentials.
+- A rerun must safely skip byte-identical destinations. A conflicting existing
+  destination must fail loudly unless an explicit overwrite flag is supplied.
+- Refactor `src/publicLibrary.ts` so cover bytes come from the filesystem after
+  import. Postgres may remain the temporary source of catalog metadata and the
+  opaque cover-ID lookup.
+- Add configuration examples for `BUKSHELF_DATA_DIR`; never commit secrets or a
+  developer-specific absolute path.
+- Update capability discovery only if the advertised meaning remains accurate.
+
+### Ownership and conflict boundary
+
+Claude owns new storage/importer modules, their tests, `src/publicLibrary.ts`,
+and storage-related package scripts/config examples. Codex owns authentication,
+frontend auth pages, session middleware, and auth-specific SQLite code.
+
+Avoid editing `src/app.ts`, `src/server.ts`, or this document unless absolutely
+necessary. If integration needs those files, put only that wiring in a final,
+separate commit and explain the required environment variables in its message.
+Do not modify the public API response schema or expose book hashes/file keys.
+
+### Acceptance checks
+
+1. New storage/importer tests pass under `bun test`.
+2. The importer succeeds against the current local Postgres/MinIO stack and a
+   second run is a no-op with accurate counts.
+3. The real public JPEG is served with its existing MIME type and cache headers
+   after Bun is configured with the imported data directory.
+4. Public catalog and cover delivery continue working when MinIO is unavailable
+   or Bun is deliberately given an invalid MinIO endpoint after import.
+5. `pnpm lint`, `pnpm --filter @readest/readest-app build-web`, Compose config
+   validation, and `git diff --check` pass.
+6. The worktree contains no imported books, covers, credentials, logs, or other
+   runtime data. Commit the completed lane and report its commit hashes.
