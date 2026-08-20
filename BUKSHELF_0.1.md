@@ -80,13 +80,35 @@ browser/native smoke test appropriate to the changed behavior.
 
 ## Current State
 
-- The existing Docker/Supabase/MinIO stack runs locally.
+- The existing Docker/Supabase/MinIO stack runs locally on uncommon ports.
 - The web frontend is branded Bukshelf and exposes a safe public bookshelf.
 - Soniox TTS, OpenRouter Reader AI, and provider usage metering are working.
-- No Bun replacement server exists yet.
-- The existing environment still uses its original local ports, including 3000.
+- A Bun migration server now supplies health and capability discovery endpoints
+  and can serve a configured static web bundle.
+- The legacy stack and Bun server have been smoke-tested concurrently without
+  changing the existing Postgres or MinIO data volumes.
+
+## Development Runtime
+
+| Purpose | Address |
+| --- | --- |
+| Legacy Next.js web app | `http://localhost:43171` |
+| Legacy Supabase gateway | `http://localhost:43172` |
+| Legacy MinIO API | `http://localhost:43173` |
+| Legacy MinIO console | `http://localhost:43174` |
+| Bun migration server | `http://localhost:43175` |
+
+Run the Bun server from the repository root with `pnpm dev:bukshelf`. Its
+discovery document is at `/.well-known/bukshelf` and advertises only capabilities
+that have actually migrated.
+
+## Frontend Boundary
+
+- Keep the Next.js frontend able to receive ongoing upstream Readest improvements.
+- The final self-hosted artifact runs the frontend and API from one Bun process.
 
 ## Next Step
 
-Move the existing stack to uncommon non-conflicting ports, verify it unchanged,
-then scaffold the Bun server on a third port with health and capability endpoints.
+Move the public bookshelf catalog and cover delivery to Bun, point only those
+frontend requests at it, and verify signed-out and signed-in library behavior
+before migrating authentication.

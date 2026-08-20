@@ -9,6 +9,8 @@
     "lint:lua": "pnpm --filter @readest/readest-app lint:lua",
     "tauri": "pnpm --filter @readest/readest-app tauri",
     "dev-web": "pnpm --filter @readest/readest-app dev-web",
+    "dev:bukshelf": "bun --cwd apps/bukshelf-server dev",
+    "test:bukshelf": "bun --cwd apps/bukshelf-server test",
     "prepare": "husky",
     "fmt:check": "pnpm --filter @readest/readest-app fmt:check",
     "clippy:check": "pnpm --filter @readest/readest-app clippy:check",

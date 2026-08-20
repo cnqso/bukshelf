@@ -14,12 +14,12 @@
 
 ### Exposed ports
 
-| Port   | Service          |
-| ------ | ---------------- |
-| `3000` | readest          |
-| `8000` | kong API gateway |
-| `9000` | MinIO S3 API     |
-| `9001` | MinIO console UI |
+| Default port | Service          | Variable             |
+| ------------ | ---------------- | -------------------- |
+| `43171`      | Readest client   | `READEST_HTTP_PORT`  |
+| `43172`      | kong API gateway | `KONG_HTTP_PORT`     |
+| `43173`      | MinIO S3 API     | `MINIO_API_PORT`     |
+| `43174`      | MinIO console UI | `MINIO_CONSOLE_PORT` |
 
 ---
 
@@ -99,8 +99,8 @@ docker compose -f compose.yaml -f compose.build.yaml up --build -d
 
 ### 3. Access
 
-- Readest app: `http://localhost:3000`
-- MinIO console: `http://localhost:9001` (login with `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`)
+- Readest app: `http://localhost:43171`
+- MinIO console: `http://localhost:43174` (login with `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`)
 
 ### Upgrading an existing deployment
 
