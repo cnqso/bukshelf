@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { SQL } from 'bun';
+import { ObjectStoreError, type ObjectStore } from './objectStore';
 
 export interface PublicLibraryBook {
   id: string;
@@ -19,29 +19,70 @@ export interface PublicLibraryService {
   getCover(fileId: string): Promise<PublicCover | null>;
 }
 
+/** Catalog rows the legacy Postgres still supplies. Only metadata, never bytes. */
+export interface CatalogBook {
+  bookHash: string;
+  title: string | null;
+  sourceTitle: string | null;
+  author: string | null;
+  coverId: string | null;
+}
+
+export interface CatalogCoverFile {
+  fileKey: string;
+  bookHash: string | null;
+}
+
+export interface PublicCatalog {
+  listBooks(): Promise<CatalogBook[]>;
+  findCoverFile(fileId: string): Promise<CatalogCoverFile | null>;
+}
+
 interface LegacyLibraryConfig {
   databaseUrl: string;
   ownerEmail: string;
-  s3Endpoint: string;
-  s3Region: string;
-  s3Bucket: string;
-  s3AccessKeyId: string;
-  s3SecretAccessKey: string;
+  /** Cover bytes come from here; MinIO is no longer on the serving path. */
+  store: ObjectStore;
 }
 
 const isCoverKey = (fileKey: string): boolean => /\/cover\.(png|jpe?g|webp|gif)$/i.test(fileKey);
 
-export const createLegacyPublicLibrary = (config: LegacyLibraryConfig): PublicLibraryService => {
+/**
+ * Postgres is still the temporary source of catalog metadata and of the opaque
+ * cover-id lookup. Cover bytes are served from the imported data directory, so
+ * the public shelf keeps working with MinIO stopped or misconfigured.
+ */
+export const createPublicLibrary = (
+  catalog: PublicCatalog,
+  store: ObjectStore,
+): PublicLibraryService => ({
+  async listBooks() {
+    const books = await catalog.listBooks();
+    return books.map((book) => ({
+      id: createHash('sha256').update(book.bookHash).digest('hex').slice(0, 24),
+      title: book.title?.trim() || book.sourceTitle?.trim() || 'Untitled',
+      author: book.author?.trim() || null,
+      coverUrl: book.coverId ? `/api/public/library/covers/${book.coverId}` : null,
+    }));
+  },
+
+  async getCover(fileId) {
+    const file = await catalog.findCoverFile(fileId);
+    if (!file?.bookHash || !isCoverKey(file.fileKey)) return null;
+
+    try {
+      const cover = await store.readCover(file.bookHash);
+      return cover ? { body: cover.body, contentType: cover.contentType } : null;
+    } catch (error) {
+      // A hash the store rejects is indistinguishable from a missing cover here.
+      if (error instanceof ObjectStoreError) return null;
+      throw error;
+    }
+  },
+});
+
+export const createLegacyCatalog = (config: LegacyLibraryConfig): PublicCatalog => {
   const database = new SQL(config.databaseUrl);
-  const storage = new S3Client({
-    endpoint: config.s3Endpoint,
-    region: config.s3Region,
-    forcePathStyle: true,
-    credentials: {
-      accessKeyId: config.s3AccessKeyId,
-      secretAccessKey: config.s3SecretAccessKey,
-    },
-  });
 
   const findOwnerId = async (): Promise<string | null> => {
     const rows = await database`
@@ -82,19 +123,20 @@ export const createLegacyPublicLibrary = (config: LegacyLibraryConfig): PublicLi
       `;
 
       return rows.map((book) => ({
-        id: createHash('sha256').update(book.book_hash).digest('hex').slice(0, 24),
-        title: book.title?.trim() || book.source_title?.trim() || 'Untitled',
-        author: book.author?.trim() || null,
-        coverUrl: book.cover_id ? `/api/public/library/covers/${book.cover_id}` : null,
+        bookHash: book.book_hash,
+        title: book.title,
+        sourceTitle: book.source_title,
+        author: book.author,
+        coverId: book.cover_id,
       }));
     },
 
-    async getCover(fileId) {
+    async findCoverFile(fileId) {
       const ownerId = await findOwnerId();
       if (!ownerId) return null;
 
       const rows = await database`
-        SELECT f.file_key
+        SELECT f.file_key, f.book_hash
         FROM public.files f
         INNER JOIN public.books b
           ON b.user_id = f.user_id
@@ -105,17 +147,12 @@ export const createLegacyPublicLibrary = (config: LegacyLibraryConfig): PublicLi
           AND f.deleted_at IS NULL
         LIMIT 1
       `;
-      const fileKey = rows[0]?.file_key;
-      if (!fileKey || !isCoverKey(fileKey)) return null;
 
-      const object = await storage.send(
-        new GetObjectCommand({ Bucket: config.s3Bucket, Key: fileKey }),
-      );
-      if (!object.Body) throw new Error('Cover object body is empty');
-      return {
-        body: await object.Body.transformToByteArray(),
-        contentType: object.ContentType,
-      };
+      const row = rows[0];
+      return row ? { fileKey: row.file_key, bookHash: row.book_hash } : null;
     },
   };
 };
+
+export const createLegacyPublicLibrary = (config: LegacyLibraryConfig): PublicLibraryService =>
+  createPublicLibrary(createLegacyCatalog(config), config.store);
