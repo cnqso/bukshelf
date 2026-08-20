@@ -2,6 +2,7 @@ import { createHandler } from './app';
 import { AuthService } from './auth';
 import { AuthStore } from './authStore';
 import { getDatabasePath, getLegacyDatabaseUrl } from './config';
+import { createObjectStore } from './objectStore';
 import { createLegacyPublicLibrary } from './publicLibrary';
 
 const port = Number.parseInt(process.env.BUKSHELF_PORT ?? '43175', 10);
@@ -21,8 +22,18 @@ if (authEnabled && !auth?.owner) {
   );
 }
 
+const publicLibraryEnabled = process.env.SELF_HOSTED_PUBLIC_LIBRARY?.toLowerCase() === 'true';
+const dataDir = process.env.BUKSHELF_DATA_DIR;
+
 if (!Number.isInteger(port) || port < 1 || port > 65_535) {
   throw new Error(`Invalid BUKSHELF_PORT: ${process.env.BUKSHELF_PORT}`);
+}
+
+if (publicLibraryEnabled && !dataDir) {
+  throw new Error(
+    'BUKSHELF_DATA_DIR is required when SELF_HOSTED_PUBLIC_LIBRARY is true. ' +
+      'Set it (see docker/.env.example) and run `pnpm import:bukshelf` once.',
+  );
 }
 
 const server = Bun.serve({
@@ -34,17 +45,11 @@ const server = Bun.serve({
     auth,
     secureCookies,
     publicLibrary:
-      process.env.SELF_HOSTED_PUBLIC_LIBRARY?.toLowerCase() === 'true'
+      publicLibraryEnabled && dataDir
         ? createLegacyPublicLibrary({
             databaseUrl: getLegacyDatabaseUrl(),
             ownerEmail: process.env.SELF_HOSTED_OWNER_EMAIL ?? '',
-            s3Endpoint:
-              process.env.BUKSHELF_S3_ENDPOINT ??
-              `http://127.0.0.1:${process.env.MINIO_API_PORT ?? '43173'}`,
-            s3Region: process.env.S3_REGION ?? 'us-east-1',
-            s3Bucket: process.env.S3_BUCKET_NAME ?? '',
-            s3AccessKeyId: process.env.MINIO_ROOT_USER ?? '',
-            s3SecretAccessKey: process.env.MINIO_ROOT_PASSWORD ?? '',
+            store: createObjectStore({ root: dataDir }),
           })
         : undefined,
   }),
