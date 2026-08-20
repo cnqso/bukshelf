@@ -83,8 +83,14 @@ browser/native smoke test appropriate to the changed behavior.
 - The existing Docker/Supabase/MinIO stack runs locally on uncommon ports.
 - The web frontend is branded Bukshelf and exposes a safe public bookshelf.
 - Soniox TTS, OpenRouter Reader AI, and provider usage metering are working.
-- A Bun migration server now supplies health and capability discovery endpoints
-  and can serve a configured static web bundle.
+- The Bun migration server supplies health and capability discovery endpoints,
+  can serve a configured static web bundle, and now owns the anonymous public
+  bookshelf and cover-delivery API.
+- The public shelf frontend calls Bun directly. Its former Next.js API routes
+  have been removed.
+- As a temporary migration adapter, Bun reads the existing Postgres data and
+  MinIO objects directly; public responses expose only title, author, opaque
+  identifiers, and validated cover image bytes.
 - The legacy stack and Bun server have been smoke-tested concurrently without
   changing the existing Postgres or MinIO data volumes.
 
@@ -97,6 +103,7 @@ browser/native smoke test appropriate to the changed behavior.
 | Legacy MinIO API | `http://localhost:43173` |
 | Legacy MinIO console | `http://localhost:43174` |
 | Bun migration server | `http://localhost:43175` |
+| Legacy Postgres bridge (migration only) | `localhost:43176` |
 
 Run the Bun server from the repository root with `pnpm dev:bukshelf`. Its
 discovery document is at `/.well-known/bukshelf` and advertises only capabilities
@@ -107,8 +114,15 @@ that have actually migrated.
 - Keep the Next.js frontend able to receive ongoing upstream Readest improvements.
 - The final self-hosted artifact runs the frontend and API from one Bun process.
 
+## Verification
+
+- Bun handler tests cover discovery, catalog privacy, image validation, CORS,
+  static assets, and missing routes.
+- The production web build, full frontend type check/lint, Compose validation,
+  and live catalog/cover requests pass.
+- The signed-out page renders the real catalog through Bun. Existing signed-in
+  library routes remain on the legacy stack for the authentication slice.
+
 ## Next Step
 
-Move the public bookshelf catalog and cover delivery to Bun, point only those
-frontend requests at it, and verify signed-out and signed-in library behavior
-before migrating authentication.
+Move single-owner bootstrap, login, sessions, and CLI password reset into Bun.

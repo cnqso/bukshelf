@@ -3,6 +3,7 @@ docker/.env
 
 # dependencies
 /node_modules
+/apps/bukshelf-server/node_modules
 /.pnp
 .pnp.js
 .yarn/install-state.gz

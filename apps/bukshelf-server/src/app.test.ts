@@ -3,6 +3,26 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHandler } from './app';
+import type { PublicLibraryService } from './publicLibrary';
+
+const coverId = '123e4567-e89b-42d3-a456-426614174000';
+const publicLibrary: PublicLibraryService = {
+  async listBooks() {
+    return [
+      {
+        id: 'opaque-book-id',
+        title: 'A Public Book',
+        author: 'A. Reader',
+        coverUrl: `/api/public/library/covers/${coverId}`,
+      },
+    ];
+  },
+  async getCover(fileId) {
+    return fileId === coverId
+      ? { body: new Uint8Array([0xff, 0xd8, 0xff, 0xdb]), contentType: 'image/jpeg' }
+      : null;
+  },
+};
 
 describe('Bukshelf server', () => {
   let webDir: string;
@@ -28,6 +48,41 @@ describe('Bukshelf server', () => {
     const body = await response.json();
     expect(body.mode).toBe('single-owner');
     expect(Object.values(body.capabilities).every((enabled) => enabled === false)).toBe(true);
+  });
+
+  test('advertises and serves the public library when configured', async () => {
+    const handler = createHandler({ publicLibrary, publicOrigin: 'http://localhost:43171' });
+    const discovery = await handler(new Request('http://localhost/.well-known/bukshelf'));
+    expect((await discovery.json()).capabilities.library).toBe(true);
+
+    const response = await handler(new Request('http://localhost/api/public/library'));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('access-control-allow-origin')).toBe('http://localhost:43171');
+    expect(await response.json()).toEqual({
+      books: [
+        {
+          id: 'opaque-book-id',
+          title: 'A Public Book',
+          author: 'A. Reader',
+          coverUrl: `/api/public/library/covers/${coverId}`,
+        },
+      ],
+    });
+  });
+
+  test('serves only recognized images through opaque cover ids', async () => {
+    const handler = createHandler({ publicLibrary });
+    const response = await handler(
+      new Request(`http://localhost/api/public/library/covers/${coverId}`),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('image/jpeg');
+    expect(await response.bytes()).toEqual(new Uint8Array([0xff, 0xd8, 0xff, 0xdb]));
+
+    const invalid = await handler(
+      new Request('http://localhost/api/public/library/covers/not-a-uuid'),
+    );
+    expect(invalid.status).toBe(404);
   });
 
   test('serves a configured web bundle with an SPA fallback', async () => {

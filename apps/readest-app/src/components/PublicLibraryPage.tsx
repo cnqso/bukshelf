@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { PiArrowRight, PiBookOpenText } from 'react-icons/pi';
-import { getBrandName, getSourceCodeUrl } from '@/services/runtimeConfig';
+import { getBrandName, getRuntimeConfig, getSourceCodeUrl } from '@/services/runtimeConfig';
 
 interface PublicBook {
   id: string;
@@ -21,11 +21,12 @@ type LibraryState =
 export default function PublicLibraryPage() {
   const brandName = getBrandName();
   const sourceCodeUrl = getSourceCodeUrl();
+  const bukshelfApiBaseUrl = getRuntimeConfig()?.bukshelfApiBaseUrl?.replace(/\/$/, '') || '';
   const [library, setLibrary] = useState<LibraryState>({ status: 'loading', books: [] });
 
   useEffect(() => {
     const controller = new AbortController();
-    void fetch('/api/public/library', { signal: controller.signal })
+    void fetch(`${bukshelfApiBaseUrl}/api/public/library`, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error('Library request failed');
         return (await response.json()) as { books: PublicBook[] };
@@ -36,7 +37,7 @@ export default function PublicLibraryPage() {
         setLibrary({ status: 'error', books: [] });
       });
     return () => controller.abort();
-  }, []);
+  }, [bukshelfApiBaseUrl]);
 
   return (
     <main className='bg-base-100 text-base-content min-h-dvh'>
@@ -108,12 +109,13 @@ export default function PublicLibraryPage() {
                 <div className='bg-base-200 relative aspect-[2/3] overflow-hidden rounded-xl shadow-[0_16px_34px_-20px_rgba(0,0,0,0.6)] ring-1 ring-black/10'>
                   {book.coverUrl ? (
                     <Image
-                      src={book.coverUrl}
+                      src={`${bukshelfApiBaseUrl}${book.coverUrl}`}
                       alt={`Cover of ${book.title}`}
                       fill
                       loading={index < 3 ? 'eager' : 'lazy'}
                       sizes='(max-width: 640px) 45vw, (max-width: 1024px) 28vw, 16vw'
                       className='object-cover'
+                      unoptimized
                     />
                   ) : (
                     <div className='from-base-200 to-base-300 flex h-full flex-col items-center justify-center bg-gradient-to-br p-5 text-center'>

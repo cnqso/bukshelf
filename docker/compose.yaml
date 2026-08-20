@@ -5,6 +5,9 @@ services:
     container_name: supabase-db
     image: supabase/postgres:15.8.1.085
     restart: unless-stopped
+    ports:
+      # Migration-only: the Bun server reads the legacy database directly.
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-43176}:${POSTGRES_PORT:-5432}"
     volumes:
       - ./volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:Z
       - ./volumes/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:Z
@@ -139,6 +142,7 @@ services:
       SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_ADMIN_KEY: ${SERVICE_ROLE_KEY}
       API_BASE_URL: ${SITE_URL}
+      BUKSHELF_API_PUBLIC_URL: ${BUKSHELF_API_PUBLIC_URL:-http://${HOST_IP}:43175}
       S3_ENDPOINT: http://minio:9000
       S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://${HOST_IP}:${MINIO_API_PORT:-43173}}
       S3_REGION: us-east-1
