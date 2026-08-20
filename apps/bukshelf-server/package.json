@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "bun --env-file ../../docker/.env --watch src/server.ts",
     "start": "bun src/server.ts",
+    "import": "bun --env-file ../../docker/.env src/importLegacyCli.ts",
     "test": "bun test",
     "auth:setup": "bun --env-file ../../docker/.env src/cli.ts auth setup",
     "auth:import-legacy": "bun --env-file ../../docker/.env src/cli.ts auth import-legacy",
