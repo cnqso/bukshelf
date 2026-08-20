@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { createHandler } from './app';
 import { AuthService } from './auth';
 import { AuthStore } from './authStore';
+import { FileStore } from './fileStore';
 import type { PublicLibraryService } from './publicLibrary';
 
 const coverId = '123e4567-e89b-42d3-a456-426614174000';
@@ -60,6 +61,18 @@ describe('Bukshelf server', () => {
       new Request('http://localhost/.well-known/bukshelf'),
     );
     expect((await response.json()).capabilities.authentication).toBe(true);
+    store.close();
+  });
+
+  test('advertises files when embedded storage is configured', async () => {
+    const store = new AuthStore(':memory:');
+    store.createOwner({ id: 'owner', email: 'owner@example.com', passwordHash: 'unused' });
+    const auth = new AuthService(store, 'test-secret-that-is-deliberately-over-thirty-two-bytes');
+    const files = new FileStore(store.database, webDir);
+    const response = await createHandler({ auth, files })(
+      new Request('http://localhost/.well-known/bukshelf'),
+    );
+    expect((await response.json()).capabilities.files).toBe(true);
     store.close();
   });
 

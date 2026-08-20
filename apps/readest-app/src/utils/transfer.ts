@@ -90,11 +90,17 @@ export const createProgressThrottle = (
   };
 };
 
-export const webUpload = (file: File, uploadUrl: string, onProgress?: ProgressHandler) => {
+export const webUpload = (
+  file: File,
+  uploadUrl: string,
+  onProgress?: ProgressHandler,
+  headers?: Record<string, string>,
+) => {
   return new Promise<void>((resolve, reject) => {
     const startTime = Date.now();
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', uploadUrl, true);
+    Object.entries(headers ?? {}).forEach(([name, value]) => xhr.setRequestHeader(name, value));
 
     xhr.upload.onprogress = (event) => {
       if (onProgress && event.lengthComputable) {

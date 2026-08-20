@@ -24,6 +24,7 @@ Bukshelf
     ├── bukshelf.sqlite
     ├── books/
     ├── covers/
+    ├── files/
     └── backups/
 ```
 
@@ -98,8 +99,21 @@ browser/native smoke test appropriate to the changed behavior.
 - The existing owner's UUID, email, and bcrypt hash were imported once without
   copying or logging a plaintext password. Fresh installs use `auth:setup`.
 - The unified data directory now contains `bukshelf.sqlite`, imported books,
-  imported covers, and temporary writes. Public cover delivery no longer reads
-  MinIO and remains available when MinIO is stopped.
+  imported covers, private files, and temporary writes. Public cover delivery
+  no longer reads MinIO and remains available when MinIO is stopped.
+- Authenticated books, covers, and replica binaries now upload and download
+  directly through Bun. Bun streams uploads to an atomic temporary file and
+  keeps file metadata in the existing SQLite database; the path contains no
+  S3 signing request, MinIO transfer, PostgREST call, or upload-confirmation
+  round trip.
+- File listing, storage statistics, individual deletion, and bulk purge are
+  also Bun/SQLite operations. Self-hosted storage has no artificial quota.
+- Bun idempotently indexes already-imported hash-keyed books and covers into
+  SQLite at startup, so the Storage Manager is complete without Postgres.
+- Imported hash-keyed books and covers remain readable through a narrow
+  filesystem bridge, so migration does not require a second copy. Temporary
+  public image uploads used by Discord presence remain on the legacy route;
+  they are not part of the private bookshelf storage path.
 - The legacy stack and Bun server have been smoke-tested concurrently without
   changing the existing Postgres or MinIO data volumes.
 
@@ -126,7 +140,8 @@ that have actually migrated.
 ## Verification
 
 - Bun handler tests cover discovery, catalog privacy, image validation, CORS,
-  static assets, and missing routes.
+  static assets, authenticated streamed file transfers, SQLite file metadata,
+  metering, bulk deletion, traversal rejection, and missing routes.
 - The production web build, full frontend type check/lint, Compose validation,
   and live catalog/cover requests pass.
 - The signed-out page renders the real catalog through Bun. Existing signed-in
@@ -230,13 +245,13 @@ Do not modify the public API response schema or expose book hashes/file keys.
 6. The worktree contains no imported books, covers, credentials, logs, or other
    runtime data. Commit the completed lane and report its commit hashes.
 
-All six checks passed after integration. The combined suite has 30 passing Bun
+All six checks passed after integration. The combined suite had 30 passing Bun
 tests, the production browser renders the real filesystem cover with MinIO
 stopped, and the primary checkout contains no tracked runtime data.
 
 ## Next Step
 
-Move authenticated book and cover upload/download routes to Bun and the local
-object store. Postgres may remain the temporary metadata source for that slice;
-the goal is to remove MinIO from the signed-in reader path before migrating
-library metadata and synchronization into SQLite.
+Move library metadata and incremental synchronization from Supabase/Postgres
+into Bun and SQLite. This is now the largest remaining cloud boundary in the
+normal signed-in reader path; file bytes and their storage-manager metadata are
+already local.

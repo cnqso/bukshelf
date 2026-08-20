@@ -4,6 +4,7 @@ import { AuthStore } from './authStore';
 import { getDatabasePath, getLegacyDatabaseUrl } from './config';
 import { createObjectStore } from './objectStore';
 import { createLegacyPublicLibrary } from './publicLibrary';
+import { FileStore } from './fileStore';
 
 const port = Number.parseInt(process.env.BUKSHELF_PORT ?? '43175', 10);
 const authEnabled = process.env.BUKSHELF_AUTH_ENABLED?.toLowerCase() === 'true';
@@ -24,6 +25,10 @@ if (authEnabled && !auth?.owner) {
 
 const publicLibraryEnabled = process.env.SELF_HOSTED_PUBLIC_LIBRARY?.toLowerCase() === 'true';
 const dataDir = process.env.BUKSHELF_DATA_DIR;
+const objectStore = dataDir ? createObjectStore({ root: dataDir }) : undefined;
+const files =
+  authStore && dataDir ? new FileStore(authStore.database, dataDir, objectStore) : undefined;
+await files?.init();
 
 if (!Number.isInteger(port) || port < 1 || port > 65_535) {
   throw new Error(`Invalid BUKSHELF_PORT: ${process.env.BUKSHELF_PORT}`);
@@ -43,13 +48,14 @@ const server = Bun.serve({
     webDir: process.env.BUKSHELF_WEB_DIR,
     publicOrigin: process.env.SITE_URL,
     auth,
+    files,
     secureCookies,
     publicLibrary:
       publicLibraryEnabled && dataDir
         ? createLegacyPublicLibrary({
             databaseUrl: getLegacyDatabaseUrl(),
             ownerEmail: process.env.SELF_HOSTED_OWNER_EMAIL ?? '',
-            store: createObjectStore({ root: dataDir }),
+            store: objectStore!,
           })
         : undefined,
   }),

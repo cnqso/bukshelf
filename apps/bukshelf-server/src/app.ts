@@ -3,6 +3,8 @@ import type { AuthService } from './auth';
 import { handleAuthRoute } from './authRoutes';
 import { detectImageType } from './imageType';
 import type { PublicLibraryService } from './publicLibrary';
+import { handleFileRoute } from './fileRoutes';
+import type { FileStore } from './fileStore';
 
 export const BUKSHELF_VERSION = '0.1.0-dev';
 
@@ -11,6 +13,7 @@ export interface ServerConfig {
   publicOrigin?: string;
   publicLibrary?: PublicLibraryService;
   auth?: AuthService;
+  files?: FileStore;
   secureCookies?: boolean;
 }
 
@@ -95,6 +98,15 @@ export const createHandler =
         secureCookies: config.secureCookies ?? url.protocol === 'https:',
       });
       if (authResponse) return authResponse;
+
+      if (config.files) {
+        const fileResponse = await handleFileRoute(request, {
+          auth: config.auth,
+          files: config.files,
+          publicOrigin: config.publicOrigin,
+        });
+        if (fileResponse) return fileResponse;
+      }
     }
 
     if (url.pathname.startsWith('/api/public/library') && request.method === 'OPTIONS') {
@@ -184,7 +196,7 @@ export const createHandler =
           authentication: Boolean(config.auth),
           library: Boolean(config.publicLibrary),
           sync: false,
-          files: false,
+          files: Boolean(config.auth && config.files),
           readerAI: false,
           textToSpeech: false,
           usageMetering: false,

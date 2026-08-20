@@ -1,7 +1,8 @@
 import { getAPIBaseUrl, isWebAppPlatform } from '@/services/environment';
 import { AppService } from '@/types/system';
-import { getUserID } from '@/utils/access';
+import { getAccessToken, getUserID } from '@/utils/access';
 import { fetchWithAuth } from '@/utils/fetch';
+import { getBukshelfApiBaseUrl } from '@/services/runtimeConfig';
 import {
   tauriUpload,
   tauriDownload,
@@ -18,6 +19,13 @@ const API_ENDPOINTS = {
   stats: getAPIBaseUrl() + '/storage/stats',
   list: getAPIBaseUrl() + '/storage/list',
   purge: getAPIBaseUrl() + '/storage/purge',
+};
+
+const bukshelfFilesUrl = () => `${getBukshelfApiBaseUrl()}/api/files`;
+const authHeaders = async () => {
+  const token = await getAccessToken();
+  if (!token) throw new Error('Not authenticated');
+  return { Authorization: `Bearer ${token}` };
 };
 
 export const createProgressHandler = (
@@ -48,6 +56,28 @@ export const uploadFile = async (
   media?: string,
 ) => {
   try {
+    // Temporary/public media uploads still belong to the legacy sharing path.
+    // Private library objects now stream directly to Bun: no presigned URL,
+    // object-storage SDK, or separate confirmation request.
+    if (!temp && !media && getBukshelfApiBaseUrl()) {
+      const query = new URLSearchParams({ path: file.name });
+      if (bookHash) query.set('bookHash', bookHash);
+      const uploadUrl = `${bukshelfFilesUrl()}?${query}`;
+      const headers = await authHeaders();
+      if (isWebAppPlatform()) {
+        await webUpload(file, uploadUrl, onProgress, headers);
+      } else {
+        await tauriUpload(
+          uploadUrl,
+          fileFullPath,
+          'PUT',
+          onProgress,
+          new Map(Object.entries(headers)),
+        );
+      }
+      return undefined;
+    }
+
     const response = await fetchWithAuth(API_ENDPOINTS.upload, {
       method: 'POST',
       headers: {
@@ -93,6 +123,28 @@ export const uploadReplicaFile = async (
   onProgress?: ProgressHandler,
 ) => {
   try {
+    if (getBukshelfApiBaseUrl()) {
+      const query = new URLSearchParams({
+        path: cfp,
+        replicaKind,
+        replicaId,
+      });
+      const uploadUrl = `${bukshelfFilesUrl()}?${query}`;
+      const headers = await authHeaders();
+      if (isWebAppPlatform()) {
+        await webUpload(file, uploadUrl, onProgress, headers);
+      } else {
+        await tauriUpload(
+          uploadUrl,
+          fileFullPath,
+          'PUT',
+          onProgress,
+          new Map(Object.entries(headers)),
+        );
+      }
+      return;
+    }
+
     const response = await fetchWithAuth(API_ENDPOINTS.upload, {
       method: 'POST',
       headers: {
@@ -122,10 +174,16 @@ export const uploadReplicaFile = async (
 
 export const batchGetDownloadUrls = async (files: { lfp: string; cfp: string }[]) => {
   try {
-    const userId = await getUserID();
-    if (!userId) {
-      throw new Error('Not authenticated');
+    if (getBukshelfApiBaseUrl()) {
+      const headers = await authHeaders();
+      return files.map((file) => ({
+        ...file,
+        downloadUrl: `${bukshelfFilesUrl()}?path=${encodeURIComponent(file.cfp)}`,
+        headers,
+      }));
     }
+    const userId = await getUserID();
+    if (!userId) throw new Error('Not authenticated');
     const filePaths = files.map((file) => file.cfp);
     const fileKeys = filePaths.map((path) => `${userId}/${path}`);
     const response = await fetchWithAuth(`${API_ENDPOINTS.download}`, {
@@ -143,6 +201,7 @@ export const batchGetDownloadUrls = async (files: { lfp: string; cfp: string }[]
         lfp: file.lfp,
         cfp: file.cfp,
         downloadUrl: downloadUrls[fileKey],
+        headers: undefined,
       };
     });
   } catch (error) {
@@ -174,21 +233,22 @@ export const downloadFile = async ({
 }: DownloadFileParams) => {
   try {
     let downloadUrl = url;
+    let downloadHeaders = headers;
     if (!downloadUrl) {
-      const userId = await getUserID();
-      if (!userId) {
-        throw new Error('Not authenticated');
+      if (getBukshelfApiBaseUrl()) {
+        downloadUrl = `${bukshelfFilesUrl()}?path=${encodeURIComponent(cfp)}`;
+        downloadHeaders = await authHeaders();
+      } else {
+        const userId = await getUserID();
+        if (!userId) throw new Error('Not authenticated');
+        const fileKey = `${userId}/${cfp}`;
+        const response = await fetchWithAuth(
+          `${API_ENDPOINTS.download}?fileKey=${encodeURIComponent(fileKey)}`,
+          { method: 'GET' },
+        );
+        const body = (await response.json()) as { downloadUrl?: string };
+        downloadUrl = body.downloadUrl;
       }
-      const fileKey = `${userId}/${cfp}`;
-      const response = await fetchWithAuth(
-        `${API_ENDPOINTS.download}?fileKey=${encodeURIComponent(fileKey)}`,
-        {
-          method: 'GET',
-        },
-      );
-
-      const { downloadUrl: url } = await response.json();
-      downloadUrl = url;
     }
 
     if (!downloadUrl) {
@@ -199,7 +259,7 @@ export const downloadFile = async ({
       const { headers: responseHeaders, blob } = await webDownload(
         downloadUrl,
         onProgress,
-        headers,
+        downloadHeaders,
       );
       await appService.writeFile(dst, 'None', await blob.arrayBuffer());
       return responseHeaders;
@@ -208,7 +268,7 @@ export const downloadFile = async ({
         downloadUrl,
         dst,
         onProgress,
-        headers,
+        downloadHeaders,
         undefined,
         singleThreaded,
         skipSslVerification,
@@ -222,11 +282,14 @@ export const downloadFile = async ({
 
 export const deleteFile = async (filePath: string) => {
   try {
-    const userId = await getUserID();
-    if (!userId) {
-      throw new Error('Not authenticated');
+    if (getBukshelfApiBaseUrl()) {
+      await fetchWithAuth(`${bukshelfFilesUrl()}?path=${encodeURIComponent(filePath)}`, {
+        method: 'DELETE',
+      });
+      return;
     }
-
+    const userId = await getUserID();
+    if (!userId) throw new Error('Not authenticated');
     const fileKey = `${userId}/${filePath}`;
     await fetchWithAuth(`${API_ENDPOINTS.delete}?fileKey=${encodeURIComponent(fileKey)}`, {
       method: 'DELETE',
@@ -254,7 +317,8 @@ export interface StorageStats {
 
 export const getStorageStats = async (): Promise<StorageStats> => {
   try {
-    const response = await fetchWithAuth(API_ENDPOINTS.stats, {
+    const endpoint = getBukshelfApiBaseUrl() ? `${bukshelfFilesUrl()}/stats` : API_ENDPOINTS.stats;
+    const response = await fetchWithAuth(endpoint, {
       method: 'GET',
     });
 
@@ -303,9 +367,8 @@ export const listFiles = async (params?: ListFilesParams): Promise<ListFilesResp
     if (params?.bookHash) queryParams.set('bookHash', params.bookHash);
     if (params?.search) queryParams.set('search', params.search);
 
-    const url = queryParams.toString()
-      ? `${API_ENDPOINTS.list}?${queryParams.toString()}`
-      : API_ENDPOINTS.list;
+    const endpoint = getBukshelfApiBaseUrl() ? bukshelfFilesUrl() : API_ENDPOINTS.list;
+    const url = queryParams.toString() ? `${endpoint}?${queryParams.toString()}` : endpoint;
 
     const response = await fetchWithAuth(url, {
       method: 'GET',
@@ -330,15 +393,20 @@ export const purgeFiles = async (
   isFileKeys = false,
 ): Promise<PurgeFilesResult> => {
   try {
-    let fileKeys: string[];
+    if (getBukshelfApiBaseUrl()) {
+      const response = await fetchWithAuth(bukshelfFilesUrl(), {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paths: filePathsOrKeys }),
+      });
+      return await response.json();
+    }
 
-    if (isFileKeys) {
-      fileKeys = filePathsOrKeys;
-    } else {
+    let fileKeys: string[];
+    if (isFileKeys) fileKeys = filePathsOrKeys;
+    else {
       const userId = await getUserID();
-      if (!userId) {
-        throw new Error('Not authenticated');
-      }
+      if (!userId) throw new Error('Not authenticated');
       fileKeys = filePathsOrKeys.map((path) => `${userId}/${path}`);
     }
 
