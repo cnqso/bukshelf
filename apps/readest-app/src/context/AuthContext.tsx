@@ -12,6 +12,8 @@ import {
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/utils/supabase';
 import posthog from 'posthog-js';
+import { logoutOfBukshelf, restoreBukshelfSession } from '@/services/bukshelfAuthClient';
+import { isBukshelfAuthEnabled } from '@/services/runtimeConfig';
 
 interface AuthContextType {
   token: string | null;
@@ -38,27 +40,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return null;
   });
 
+  const syncSession = useCallback((session: { accessToken: string; user: User } | null) => {
+    if (session) {
+      localStorage.setItem('token', session.accessToken);
+      localStorage.setItem('user', JSON.stringify(session.user));
+      posthog.identify(session.user.id);
+      setToken(session.accessToken);
+      setUser(session.user);
+    } else {
+      localStorage.removeItem('token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user');
+      setToken(null);
+      setUser(null);
+    }
+  }, []);
+
   useEffect(() => {
-    const syncSession = (
-      session: { access_token: string; refresh_token: string; user: User } | null,
-    ) => {
-      if (session) {
-        console.log('Syncing session');
-        const { access_token, refresh_token, user } = session;
-        localStorage.setItem('token', access_token);
-        localStorage.setItem('refresh_token', refresh_token);
-        localStorage.setItem('user', JSON.stringify(user));
-        posthog.identify(user.id);
-        setToken(access_token);
-        setUser(user);
-      } else {
-        localStorage.removeItem('token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('user');
-        setToken(null);
-        setUser(null);
-      }
-    };
+    if (isBukshelfAuthEnabled()) {
+      void restoreBukshelfSession(localStorage.getItem('token'))
+        .then(({ accessToken, user }) => syncSession({ accessToken, user }))
+        .catch(() => syncSession(null));
+      return;
+    }
+
     const refreshSession = async () => {
       try {
         await supabase.auth.refreshSession();
@@ -68,47 +73,57 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_, session) => {
-      syncSession(session);
+      syncSession(session ? { accessToken: session.access_token, user: session.user } : null);
     });
 
     refreshSession();
     return () => {
       subscription?.subscription.unsubscribe();
     };
-  }, []);
+  }, [syncSession]);
 
-  // setToken / setUser from useState are stable across renders, so the empty
-  // deps array is correct. Wrapping in useCallback (and only including stable
-  // refs in the deps) is what makes the useMemo below actually memoize the
-  // context value — without this, login/logout/refresh would be recreated on
-  // every render and the memo would always invalidate.
-  const login = useCallback((newToken: string, newUser: User) => {
-    console.log('Logging in');
-    setToken(newToken);
-    setUser(newUser);
-    localStorage.setItem('token', newToken);
-    localStorage.setItem('user', JSON.stringify(newUser));
-  }, []);
+  // Keep the context actions stable so consumers do not rerender merely because
+  // the provider rendered. Session-bearing actions intentionally update when
+  // the current token changes.
+  const login = useCallback(
+    (newToken: string, newUser: User) => {
+      syncSession({ accessToken: newToken, user: newUser });
+    },
+    [syncSession],
+  );
 
   const logout = useCallback(async () => {
-    console.log('Logging out');
+    if (isBukshelfAuthEnabled()) {
+      try {
+        await logoutOfBukshelf(token);
+      } finally {
+        syncSession(null);
+      }
+      return;
+    }
     try {
       await supabase.auth.refreshSession();
     } catch {
     } finally {
       await supabase.auth.signOut();
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      setToken(null);
-      setUser(null);
+      syncSession(null);
     }
-  }, []);
+  }, [syncSession, token]);
 
   const refresh = useCallback(async () => {
+    if (isBukshelfAuthEnabled()) {
+      try {
+        const session = await restoreBukshelfSession(token);
+        syncSession({ accessToken: session.accessToken, user: session.user });
+      } catch {
+        syncSession(null);
+      }
+      return;
+    }
     try {
       await supabase.auth.refreshSession();
     } catch {}
-  }, []);
+  }, [syncSession, token]);
 
   const value = useMemo(
     () => ({ token, user, login, logout, refresh }),

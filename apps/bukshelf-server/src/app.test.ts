@@ -3,6 +3,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHandler } from './app';
+import { AuthService } from './auth';
+import { AuthStore } from './authStore';
 import type { PublicLibraryService } from './publicLibrary';
 
 const coverId = '123e4567-e89b-42d3-a456-426614174000';
@@ -48,6 +50,17 @@ describe('Bukshelf server', () => {
     const body = await response.json();
     expect(body.mode).toBe('single-owner');
     expect(Object.values(body.capabilities).every((enabled) => enabled === false)).toBe(true);
+  });
+
+  test('advertises authentication only when an auth service is configured', async () => {
+    const store = new AuthStore(':memory:');
+    store.createOwner({ id: 'owner', email: 'owner@example.com', passwordHash: 'unused' });
+    const auth = new AuthService(store, 'test-secret-that-is-deliberately-over-thirty-two-bytes');
+    const response = await createHandler({ auth })(
+      new Request('http://localhost/.well-known/bukshelf'),
+    );
+    expect((await response.json()).capabilities.authentication).toBe(true);
+    store.close();
   });
 
   test('advertises and serves the public library when configured', async () => {

@@ -25,6 +25,8 @@ import { authWithCustomTab, authWithSafari } from './utils/nativeAuth';
 import WindowButtons from '@/components/WindowButtons';
 import type { OAuthProvider } from './components/ProviderLogin';
 import AuthPanel from './components/AuthPanel';
+import SingleOwnerAuthPage from './components/SingleOwnerAuthPage';
+import { isBukshelfAuthEnabled } from '@/services/runtimeConfig';
 
 interface SingleInstancePayload {
   args: string[];
@@ -36,6 +38,10 @@ const DEEPLINK_CALLBACK = 'readest://auth-callback';
 const USE_APPLE_SIGN_IN = process.env['NEXT_PUBLIC_USE_APPLE_SIGN_IN'] === 'true';
 
 export default function AuthPage() {
+  return isBukshelfAuthEnabled() ? <SingleOwnerAuthPage /> : <LegacyAuthPage />;
+}
+
+function LegacyAuthPage() {
   const _ = useTranslation();
   const router = useRouter();
   const { login } = useAuth();

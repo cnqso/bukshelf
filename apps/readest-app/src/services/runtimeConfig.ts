@@ -6,6 +6,7 @@ export interface ReadestRuntimeConfig {
   supabaseAnonKey?: string;
   apiBaseUrl?: string;
   bukshelfApiBaseUrl?: string;
+  bukshelfAuthEnabled?: boolean;
   objectStorageType?: string;
   storageFixedQuota?: number;
   translationFixedQuota?: number;
@@ -37,6 +38,18 @@ export const getSourceCodeUrl = () =>
     ? process.env['SELF_HOSTED_SOURCE_URL'] || 'https://github.com/readest/readest'
     : getRuntimeConfig()?.sourceCodeUrl || 'https://github.com/readest/readest';
 
+export const getBukshelfApiBaseUrl = () =>
+  (
+    (typeof window === 'undefined'
+      ? process.env['BUKSHELF_API_PUBLIC_URL']
+      : getRuntimeConfig()?.bukshelfApiBaseUrl) || ''
+  ).replace(/\/$/, '');
+
+export const isBukshelfAuthEnabled = () =>
+  typeof window === 'undefined'
+    ? process.env['BUKSHELF_AUTH_ENABLED']?.toLowerCase() === 'true'
+    : getRuntimeConfig()?.bukshelfAuthEnabled === true;
+
 export const getServerRuntimeConfig = (): ReadestRuntimeConfig => ({
   brandName: process.env['SELF_HOSTED_BRAND_NAME'] || 'Readest',
   publicLibraryEnabled: process.env['SELF_HOSTED_PUBLIC_LIBRARY']?.toLowerCase() === 'true',
@@ -53,6 +66,7 @@ export const getServerRuntimeConfig = (): ReadestRuntimeConfig => ({
     process.env['NEXT_PUBLIC_API_BASE_URL'] ??
     process.env['SITE_URL'],
   bukshelfApiBaseUrl: process.env['BUKSHELF_API_PUBLIC_URL'],
+  bukshelfAuthEnabled: process.env['BUKSHELF_AUTH_ENABLED']?.toLowerCase() === 'true',
   // These were previously baked as NEXT_PUBLIC_* build args; now read from runtime env so
   // the published image can be configured without rebuilding.
   objectStorageType:

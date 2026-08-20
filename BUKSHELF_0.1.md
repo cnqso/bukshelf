@@ -91,6 +91,11 @@ browser/native smoke test appropriate to the changed behavior.
 - As a temporary migration adapter, Bun reads the existing Postgres data and
   MinIO objects directly; public responses expose only title, author, opaque
   identifiers, and validated cover image bytes.
+- Bun now owns the single owner's password hash and session registry in
+  `bukshelf.sqlite`. Web login uses an HttpOnly cookie plus a bearer token for
+  the existing frontend API contract; login no longer calls GoTrue.
+- The existing owner's UUID, email, and bcrypt hash were imported once without
+  copying or logging a plaintext password. Fresh installs use `auth:setup`.
 - The legacy stack and Bun server have been smoke-tested concurrently without
   changing the existing Postgres or MinIO data volumes.
 
@@ -123,18 +128,27 @@ that have actually migrated.
 - The signed-out page renders the real catalog through Bun. Existing signed-in
   library routes remain on the legacy stack for the authentication slice.
 
-## Next Step
+## Owner Commands
 
-Move single-owner bootstrap, login, sessions, and CLI password reset into Bun.
+Run these from the repository root. Password prompts are hidden; automation may
+append `-- --password-stdin` and provide one line on standard input.
+
+```text
+pnpm --dir apps/bukshelf-server auth:setup
+pnpm --dir apps/bukshelf-server auth:import-legacy
+pnpm --dir apps/bukshelf-server auth:reset
+```
+
+`auth:reset` revokes every active session. The server refuses to start with
+`BUKSHELF_AUTH_ENABLED=true` until an owner has been configured.
 
 ## Parallel Work Lanes
 
 Two slices can now proceed independently from commit `b711b6a59`:
 
-1. **Codex: single-owner authentication.** Implement first-run password setup,
-   password hashing, cookie and bearer sessions, logout, and CLI password reset.
-   Preserve the current frontend auth contract where useful, but remove Supabase
-   auth from the completed path.
+1. **Codex: single-owner authentication (complete).** First-run setup, password
+   hashing, cookie and bearer sessions, logout, legacy credential import, and
+   CLI password reset now run in Bun.
 2. **Claude: filesystem object storage.** Replace MinIO reads with an ordinary
    `/data` content store, provide an idempotent importer for existing objects,
    and switch the already-migrated public cover endpoint to local files.

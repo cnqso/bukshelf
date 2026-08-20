@@ -1,4 +1,6 @@
 import { isAbsolute, relative, resolve } from 'node:path';
+import type { AuthService } from './auth';
+import { handleAuthRoute } from './authRoutes';
 import type { PublicLibraryService } from './publicLibrary';
 
 export const BUKSHELF_VERSION = '0.1.0-dev';
@@ -7,6 +9,8 @@ export interface ServerConfig {
   webDir?: string;
   publicOrigin?: string;
   publicLibrary?: PublicLibraryService;
+  auth?: AuthService;
+  secureCookies?: boolean;
 }
 
 const CONTENT_TYPES: Record<string, string> = {
@@ -102,6 +106,15 @@ export const createHandler =
   async (request: Request) => {
     const url = new URL(request.url);
 
+    if (config.auth) {
+      const authResponse = await handleAuthRoute(request, {
+        auth: config.auth,
+        publicOrigin: config.publicOrigin,
+        secureCookies: config.secureCookies ?? url.protocol === 'https:',
+      });
+      if (authResponse) return authResponse;
+    }
+
     if (url.pathname.startsWith('/api/public/library') && request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: corsHeaders(config.publicOrigin) });
     }
@@ -183,7 +196,7 @@ export const createHandler =
         apiVersion: '0.1',
         mode: 'single-owner',
         capabilities: {
-          authentication: false,
+          authentication: Boolean(config.auth),
           library: Boolean(config.publicLibrary),
           sync: false,
           files: false,
