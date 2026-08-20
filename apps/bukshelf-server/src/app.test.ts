@@ -98,6 +98,15 @@ describe('Bukshelf server', () => {
     expect(invalid.status).toBe(404);
   });
 
+  test('lets the COEP-isolated frontend embed covers from another origin', async () => {
+    const handler = createHandler({ publicLibrary, publicOrigin: 'http://localhost:43171' });
+    const response = await handler(
+      new Request(`http://localhost/api/public/library/covers/${coverId}`),
+    );
+    // Without this the browser blocks the <img> with NotSameOriginAfterDefaultedToSameOriginByCoep.
+    expect(response.headers.get('cross-origin-resource-policy')).toBe('cross-origin');
+  });
+
   test('serves a configured web bundle with an SPA fallback', async () => {
     const handler = createHandler({ webDir });
     const asset = await handler(new Request('http://localhost/app.js'));

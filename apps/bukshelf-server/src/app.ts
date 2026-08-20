@@ -1,6 +1,7 @@
 import { isAbsolute, relative, resolve } from 'node:path';
 import type { AuthService } from './auth';
 import { handleAuthRoute } from './authRoutes';
+import { detectImageType } from './imageType';
 import type { PublicLibraryService } from './publicLibrary';
 
 export const BUKSHELF_VERSION = '0.1.0-dev';
@@ -37,25 +38,6 @@ const json = (body: unknown, init: ResponseInit = {}) =>
   });
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-const detectImageType = (body: Uint8Array): string | null => {
-  if (body[0] === 0xff && body[1] === 0xd8 && body[2] === 0xff) return 'image/jpeg';
-  if (body[0] === 0x89 && body[1] === 0x50 && body[2] === 0x4e && body[3] === 0x47)
-    return 'image/png';
-  if (
-    body[0] === 0x52 &&
-    body[1] === 0x49 &&
-    body[2] === 0x46 &&
-    body[3] === 0x46 &&
-    body[8] === 0x57 &&
-    body[9] === 0x45 &&
-    body[10] === 0x42 &&
-    body[11] === 0x50
-  )
-    return 'image/webp';
-  if (new TextDecoder().decode(body.slice(0, 6)).match(/^GIF8[79]a$/)) return 'image/gif';
-  return null;
-};
 
 const corsHeaders = (origin?: string) =>
   origin
@@ -161,18 +143,21 @@ export const createHandler =
             { error: 'Not found' },
             { status: 404, headers: corsHeaders(config.publicOrigin) },
           );
-        const contentType = detectImageType(cover.body);
-        if (!contentType)
+        const image = detectImageType(cover.body);
+        if (!image)
           return json(
             { error: 'Not found' },
             { status: 404, headers: corsHeaders(config.publicOrigin) },
           );
         return new Response(request.method === 'HEAD' ? null : cover.body, {
           headers: {
-            'content-type': contentType,
+            'content-type': image.contentType,
             'content-length': String(cover.body.byteLength),
             'cache-control': 'public, max-age=300, stale-while-revalidate=3600',
             'x-content-type-options': 'nosniff',
+            // The frontend sends COEP: require-corp, so an <img> pointing at
+            // another origin is blocked unless the image opts in explicitly.
+            'cross-origin-resource-policy': 'cross-origin',
             ...corsHeaders(config.publicOrigin),
           },
         });
