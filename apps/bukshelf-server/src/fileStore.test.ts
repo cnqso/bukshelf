@@ -131,6 +131,39 @@ describe('authenticated filesystem storage', () => {
     expect(await objects.findBook('abc123')).toBeNull();
   });
 
+  test('maps Readest client book paths onto the canonical object store', async () => {
+    const objects = createObjectStore({ root });
+    await objects.writeCover('abc123', 'png', new Uint8Array([1, 2, 3]));
+    files = new FileStore(authStore.database, root, objects);
+    const handler = createHandler({ auth, files });
+    const bookPath = 'Readest/Books/abc123/abc123.epub';
+    const coverPath = 'Readest/Books/abc123/cover.png';
+
+    const upload = await handler(
+      new Request(
+        `http://localhost/api/files?path=${encodeURIComponent(bookPath)}&bookHash=abc123`,
+        {
+          method: 'PUT',
+          headers: { authorization },
+          body: new Uint8Array([9, 8, 7]),
+        },
+      ),
+    );
+    expect(upload.status).toBe(201);
+    expect(await Bun.file(objects.bookPath('abc123', 'epub')).bytes()).toEqual(
+      new Uint8Array([9, 8, 7]),
+    );
+    expect(await Bun.file(files.path(bookPath)).exists()).toBe(false);
+
+    const cover = await handler(
+      new Request(`http://localhost/api/files?path=${encodeURIComponent(coverPath)}`, {
+        headers: { authorization },
+      }),
+    );
+    expect(cover.status).toBe(200);
+    expect(await cover.bytes()).toEqual(new Uint8Array([1, 2, 3]));
+  });
+
   test('indexes imported canonical books and covers into SQLite on startup', async () => {
     const objects = createObjectStore({ root });
     await objects.writeBook('imported', 'epub', new Uint8Array([1, 2, 3]));

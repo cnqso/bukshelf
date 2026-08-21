@@ -146,6 +146,12 @@ browser/native smoke test appropriate to the changed behavior.
 - The usage dashboard reads persistent local accounting (today, session since
   boot, all-time) alongside provider-reported billing from OpenRouter's key
   endpoint and Soniox's usage summary.
+- Bun has inspectable directory backups for SQLite, books, covers, and private
+  files. Each snapshot has a SHA-256 manifest; restore verifies every byte and
+  stages replacements before swapping the live data. Maintenance commands
+  require the server to be stopped, and restore requires an explicit force flag.
+- A minimal production Bun image and Compose service persist the whole server in
+  one `/data` volume; no database or object-storage container is required.
 
 ## Development Runtime
 
@@ -172,8 +178,16 @@ that have actually migrated.
 - Bun handler tests cover discovery, catalog privacy, image validation, CORS,
   static assets, authenticated streamed file transfers, SQLite file metadata,
   metering, bulk deletion, traversal rejection, and missing routes.
+- A separate Playwright lane boots an ephemeral Bun/SQLite/filesystem backend
+  and Next frontend on ports 43282/43281. It verifies the public shelf, cover
+  privacy, invalid and valid owner login, private library sync, authenticated
+  book/cover downloads, direct Bun routing, and session restoration without
+  touching development data.
 - The production web build, full frontend type check/lint, Compose validation,
   and live catalog/cover requests pass.
+- `pnpm test:docker:bukshelf` proves fresh-volume setup, cold start, HTTP writes,
+  stopped-server backup, destructive mutation, restore into a new container,
+  and recovery of authentication, SQLite metadata, and book bytes.
 - The signed-out page renders the real SQLite catalog through Bun with no
   browser console errors. Runtime configuration points authenticated library,
   file, classic sync, replica sync, and replica-key traffic directly at Bun.
@@ -187,98 +201,13 @@ append `-- --password-stdin` and provide one line on standard input.
 pnpm --dir apps/bukshelf-server auth:setup
 pnpm --dir apps/bukshelf-server auth:import-legacy
 pnpm --dir apps/bukshelf-server auth:reset
+pnpm backup:bukshelf create
+pnpm backup:bukshelf verify <backup-directory>
+pnpm backup:bukshelf restore <backup-directory> --force
 ```
 
 `auth:reset` revokes every active session. The server refuses to start with
 `BUKSHELF_AUTH_ENABLED=true` until an owner has been configured.
-
-## Parallel Work Lanes
-
-Two slices can now proceed independently from commit `b711b6a59`:
-
-1. **Codex: single-owner authentication (complete).** First-run setup, password
-   hashing, cookie and bearer sessions, logout, legacy credential import, and
-   CLI password reset now run in Bun.
-2. **Claude: filesystem object storage (complete).** MinIO objects have an
-   idempotent importer into the ordinary data directory, and the public cover
-   endpoint now serves validated local files with the CORP header required by
-   the COEP-isolated frontend.
-
-The storage lane is deliberately metadata-light: it does not migrate Postgres
-library records, authenticated upload/download routes, or synchronization. That
-keeps it independent from the authentication work while removing one complete
-piece of MinIO from the live path.
-
-## Claude Lane Record: Filesystem Storage
-
-The `claude/filesystem-storage` lane started from `b711b6a59` and was integrated
-after the authentication lane as five small commits, keeping route wiring
-separate from the storage foundation.
-
-### Objective
-
-After one explicit import command, Bun must serve public covers from
-`BUKSHELF_DATA_DIR` without contacting MinIO. The import is a development
-migration, not a permanent compatibility layer.
-
-### Required data layout
-
-```text
-$BUKSHELF_DATA_DIR/
-├── books/<book-hash>/book.<format>
-├── covers/<book-hash>/cover.<image-extension>
-└── tmp/
-```
-
-Keep paths deterministic and independent of the legacy user UUID. Reject path
-traversal, symlinks escaping the data root, unsupported cover formats, and
-untrusted absolute paths. Writes must use a temporary file followed by an
-atomic rename.
-
-### Scope
-
-- Add a small Bun-native filesystem object-store module and focused tests.
-- Add an idempotent CLI import command that reads live, non-deleted `files` rows
-  from legacy Postgres and copies their MinIO objects into the layout above.
-- Support at least EPUB/PDF book objects and PNG/JPEG/WebP/GIF covers. Report
-  copied, skipped, missing, and failed counts without printing credentials.
-- A rerun must safely skip byte-identical destinations. A conflicting existing
-  destination must fail loudly unless an explicit overwrite flag is supplied.
-- Refactor `src/publicLibrary.ts` so cover bytes come from the filesystem after
-  import. Postgres may remain the temporary source of catalog metadata and the
-  opaque cover-ID lookup.
-- Add configuration examples for `BUKSHELF_DATA_DIR`; never commit secrets or a
-  developer-specific absolute path.
-- Update capability discovery only if the advertised meaning remains accurate.
-
-### Ownership and conflict boundary
-
-Claude owns new storage/importer modules, their tests, `src/publicLibrary.ts`,
-and storage-related package scripts/config examples. Codex owns authentication,
-frontend auth pages, session middleware, and auth-specific SQLite code.
-
-Avoid editing `src/app.ts`, `src/server.ts`, or this document unless absolutely
-necessary. If integration needs those files, put only that wiring in a final,
-separate commit and explain the required environment variables in its message.
-Do not modify the public API response schema or expose book hashes/file keys.
-
-### Acceptance checks
-
-1. New storage/importer tests pass under `bun test`.
-2. The importer succeeds against the current local Postgres/MinIO stack and a
-   second run is a no-op with accurate counts.
-3. The real public JPEG is served with its existing MIME type and cache headers
-   after Bun is configured with the imported data directory.
-4. Public catalog and cover delivery continue working when MinIO is unavailable
-   or Bun is deliberately given an invalid MinIO endpoint after import.
-5. `pnpm lint`, `pnpm --filter @readest/readest-app build-web`, Compose config
-   validation, and `git diff --check` pass.
-6. The worktree contains no imported books, covers, credentials, logs, or other
-   runtime data. Commit the completed lane and report its commit hashes.
-
-All six checks passed after integration. The combined suite had 30 passing Bun
-tests, the production browser renders the real filesystem cover with MinIO
-stopped, and the primary checkout contains no tracked runtime data.
 
 ## Next Step
 
