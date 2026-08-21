@@ -2,7 +2,6 @@ import type { AuthService } from './auth';
 
 export interface AuthRouteConfig {
   auth: AuthService;
-  ownerEmail?: string;
   publicOrigin?: string;
   secureCookies: boolean;
 }
@@ -61,17 +60,21 @@ export const handleAuthRoute = async (
     if (!canAttemptLogin()) {
       return json({ error: 'Too many setup attempts. Try again later.' }, config, { status: 429 });
     }
-    const body = (await request.json().catch(() => null)) as { password?: unknown } | null;
+    const body = (await request.json().catch(() => null)) as {
+      email?: unknown;
+      password?: unknown;
+    } | null;
+    const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
+    if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return json({ error: 'Enter a valid owner email' }, config, { status: 400 });
+    }
     if (typeof body?.password !== 'string' || body.password.length < 12) {
       return json({ error: 'Password must contain at least 12 characters' }, config, {
         status: 400,
       });
     }
-    if (!config.ownerEmail) {
-      return json({ error: 'SELF_HOSTED_OWNER_EMAIL is not configured' }, config, { status: 503 });
-    }
     attempts.push(Date.now());
-    const session = await config.auth.setupOwner(config.ownerEmail, body.password);
+    const session = await config.auth.setupOwner(email, body.password);
     if (!session) {
       return json({ error: 'Bukshelf was configured by another request' }, config, { status: 409 });
     }

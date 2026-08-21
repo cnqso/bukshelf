@@ -43,10 +43,13 @@ export const getBukshelfAuthStatus = async (): Promise<BukshelfAuthStatus> => {
   return body as BukshelfAuthStatus;
 };
 
-export const setupBukshelf = async (password: string): Promise<BukshelfSessionResponse> => {
+export const setupBukshelf = async (
+  email: string,
+  password: string,
+): Promise<BukshelfSessionResponse> => {
   const body = await authRequest('/api/auth/setup', {
     method: 'POST',
-    body: JSON.stringify({ password }),
+    body: JSON.stringify({ email, password }),
   });
   if (!body?.accessToken || !body.user) throw new Error('Invalid authentication response');
   return body as BukshelfSessionResponse;

@@ -141,17 +141,28 @@ test('an empty server performs first-run setup exactly once', async () => {
   const auth = new AuthService(store, 'test-secret-that-is-deliberately-over-thirty-two-bytes');
   const config = {
     auth,
-    ownerEmail: 'owner@example.com',
     secureCookies: false,
   };
   try {
     const status = await handleAuthRoute(new Request('http://localhost/api/auth/status'), config);
     expect(await status?.json()).toEqual({ configured: false });
 
+    const invalidEmail = await handleAuthRoute(
+      new Request('http://localhost/api/auth/setup', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: 'not-an-email',
+          password: 'correct horse battery staple',
+        }),
+      }),
+      config,
+    );
+    expect(invalidEmail?.status).toBe(400);
+
     const tooShort = await handleAuthRoute(
       new Request('http://localhost/api/auth/setup', {
         method: 'POST',
-        body: JSON.stringify({ password: 'short' }),
+        body: JSON.stringify({ email: 'owner@example.com', password: 'short' }),
       }),
       config,
     );
@@ -160,7 +171,10 @@ test('an empty server performs first-run setup exactly once', async () => {
     const setup = await handleAuthRoute(
       new Request('http://localhost/api/auth/setup', {
         method: 'POST',
-        body: JSON.stringify({ password: 'correct horse battery staple' }),
+        body: JSON.stringify({
+          email: 'OWNER@example.com',
+          password: 'correct horse battery staple',
+        }),
       }),
       config,
     );
@@ -171,7 +185,10 @@ test('an empty server performs first-run setup exactly once', async () => {
     const repeated = await handleAuthRoute(
       new Request('http://localhost/api/auth/setup', {
         method: 'POST',
-        body: JSON.stringify({ password: 'another sufficiently long password' }),
+        body: JSON.stringify({
+          email: 'other@example.com',
+          password: 'another sufficiently long password',
+        }),
       }),
       config,
     );

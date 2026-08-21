@@ -24,16 +24,22 @@ const USAGE = `Usage: bun run import [options]
 
 Options:
   --data-dir <path>      Destination data directory (default: $BUKSHELF_DATA_DIR)
-  --owner-email <email>  Import only this account's files (default: $SELF_HOSTED_OWNER_EMAIL)
+  --owner-email <email>  Import only this account's files (required)
   --overwrite            Replace destinations that hold different bytes
   --verbose              Print one line per object
   -h, --help             Show this message
 `;
 
 const parseArgs = (argv: string[]) => {
-  const options = {
+  const options: {
+    dataDir?: string;
+    ownerEmail?: string;
+    overwrite: boolean;
+    verbose: boolean;
+    help: boolean;
+  } = {
     dataDir: process.env.BUKSHELF_DATA_DIR,
-    ownerEmail: process.env.SELF_HOSTED_OWNER_EMAIL || undefined,
+    ownerEmail: undefined,
     overwrite: false,
     verbose: false,
     help: false,
@@ -180,7 +186,7 @@ const main = async () => {
     onEntry,
   });
 
-  if (!options.ownerEmail) throw new Error('Set SELF_HOSTED_OWNER_EMAIL or pass --owner-email');
+  if (!options.ownerEmail) throw new Error('Pass --owner-email for the account to import');
   const authStore = new AuthStore(getDatabasePath());
   const metadata = await importLegacyMetadata(
     createLegacyMetadataSource(options.ownerEmail),

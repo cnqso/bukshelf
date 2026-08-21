@@ -63,9 +63,10 @@ tokens per UTC day, and 2,048 output tokens per response.
 Signed-in users can open **Advanced Settings → Usage & Costs** to compare the
 live local safety meters with exact Soniox and OpenRouter provider billing.
 
-For a single-owner white-label deployment, set `SELF_HOSTED_BRAND_NAME` and
-`SELF_HOSTED_OWNER_EMAIL`. Setting `SELF_HOSTED_PUBLIC_LIBRARY=true` replaces
-the signed-out home screen with a read-only catalog for that account. Its API
+For a single-owner white-label deployment, set `SELF_HOSTED_BRAND_NAME`; the
+owner supplies their email during first-run setup. Setting
+`SELF_HOSTED_PUBLIC_LIBRARY=true` replaces the signed-out home screen with a
+read-only catalog for that account. Its API
 returns only a synthetic ID, title, author, and same-origin cover URL; cover
 bytes are proxied so storage keys and the owner's user ID are not disclosed.
 Set `SELF_HOSTED_SOURCE_URL` to the public source for the exact modified build

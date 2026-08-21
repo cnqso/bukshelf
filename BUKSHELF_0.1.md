@@ -212,8 +212,8 @@ pnpm backup:bukshelf restore <backup-directory> --force
 ```
 
 `auth:reset` revokes every active session. An empty server starts in setup mode;
-the configured owner email is fixed by `SELF_HOSTED_OWNER_EMAIL`, and the setup
-endpoint permanently closes after the first password is created.
+the owner supplies their email and password there, and the setup endpoint
+permanently closes after that account is created.
 
 ## Next Step
 

@@ -35,6 +35,7 @@ export default function SingleOwnerAuthPage() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
+    const email = String(data.get('email') || '');
     const password = String(data.get('password') || '');
     if (configured === false && password !== String(data.get('confirmation') || '')) {
       setError('Passwords do not match');
@@ -43,7 +44,9 @@ export default function SingleOwnerAuthPage() {
     setLoading(true);
     setError('');
     try {
-      const session = configured ? await loginToBukshelf(password) : await setupBukshelf(password);
+      const session = configured
+        ? await loginToBukshelf(password)
+        : await setupBukshelf(email, password);
       login(session.accessToken, session.user);
       router.replace(safeRedirect(new URLSearchParams(window.location.search).get('redirect')));
     } catch (reason) {
@@ -73,11 +76,29 @@ export default function SingleOwnerAuthPage() {
           </h1>
           <p className='text-base-content/65 mt-2 text-sm leading-relaxed'>
             {configured === false
-              ? 'Create the password for this server’s single owner.'
+              ? 'Create the single owner account for this server.'
               : 'This shelf has one owner. Enter the server password to continue.'}
           </p>
         </div>
         <form onSubmit={handleSubmit} className='w-full space-y-4'>
+          {configured === false && (
+            <div className='form-control'>
+              <label className='label' htmlFor='email'>
+                <span className='label-text'>Email</span>
+              </label>
+              <input
+                id='email'
+                name='email'
+                type='email'
+                required
+                autoFocus
+                autoComplete='email'
+                placeholder='you@example.com'
+                className='input input-bordered eink-bordered w-full rounded-lg'
+                disabled={loading}
+              />
+            </div>
+          )}
           <div className='form-control'>
             <label className='label' htmlFor='password'>
               <span className='label-text'>Password</span>
@@ -88,7 +109,7 @@ export default function SingleOwnerAuthPage() {
               type='password'
               required
               minLength={configured === false ? 12 : undefined}
-              autoFocus
+              autoFocus={configured === true}
               autoComplete={configured === false ? 'new-password' : 'current-password'}
               placeholder={
                 configured === false ? 'At least 12 characters' : 'Your Bukshelf password'

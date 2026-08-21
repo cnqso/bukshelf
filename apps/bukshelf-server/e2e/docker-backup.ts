@@ -19,7 +19,6 @@ const env = {
   BUKSHELF_AUTH_ENABLED: 'true',
   BUKSHELF_SECURE_COOKIES: 'false',
   BUKSHELF_SESSION_SECRET: 'docker-e2e-session-secret-over-thirty-two-bytes',
-  SELF_HOSTED_OWNER_EMAIL: 'docker-owner@bukshelf.test',
   SELF_HOSTED_PUBLIC_LIBRARY: 'true',
   SITE_URL: 'http://localhost',
   // Fake provider keys prove Compose passes server-only configuration into the
@@ -104,6 +103,18 @@ const login = async (baseUrl: string) => {
   return body.accessToken;
 };
 
+const setup = async (baseUrl: string) => {
+  const response = await request(baseUrl, '/api/auth/setup', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: 'docker-owner@bukshelf.test', password }),
+  });
+  await assertStatus(response, 201);
+  const body = (await response.json()) as { accessToken?: string };
+  assert.ok(body.accessToken, 'setup did not return an access token');
+  return body.accessToken;
+};
+
 const authHeaders = (token: string, json = false) => ({
   authorization: `Bearer ${token}`,
   ...(json ? { 'content-type': 'application/json' } : {}),
@@ -127,24 +138,7 @@ try {
   console.log('[docker-e2e] building the production Bun image');
   await run(compose('build'));
 
-  console.log('[docker-e2e] configuring a fresh persistent volume');
-  await run(
-    compose(
-      'run',
-      '--rm',
-      '--no-deps',
-      '-T',
-      'bukshelf',
-      'bun',
-      'src/cli.ts',
-      'auth',
-      'setup',
-      '--password-stdin',
-    ),
-    `${password}\n`,
-  );
-
-  console.log('[docker-e2e] cold-starting and seeding through HTTP');
+  console.log('[docker-e2e] cold-starting, configuring the owner, and seeding through HTTP');
   let baseUrl = await start();
   const frontend = await request(baseUrl, '/');
   await assertStatus(frontend, 200);
@@ -162,7 +156,7 @@ try {
   assert.equal(capabilities.readerAI, true);
   assert.equal(capabilities.textToSpeech, true);
   assert.equal(capabilities.usageMetering, true);
-  let token = await login(baseUrl);
+  let token = await setup(baseUrl);
   const now = Date.now();
   const fileUpload = await request(
     baseUrl,

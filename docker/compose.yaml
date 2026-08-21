@@ -157,9 +157,6 @@ services:
       SELF_HOSTED_PRIVACY_MODE: ${SELF_HOSTED_PRIVACY_MODE:-false}
       SELF_HOSTED_BRAND_NAME: ${SELF_HOSTED_BRAND_NAME:-Readest}
       SELF_HOSTED_PUBLIC_LIBRARY: ${SELF_HOSTED_PUBLIC_LIBRARY:-false}
-      # Server-only: identifies the single account whose title/author/cover
-      # catalog may be shown on the signed-out home page.
-      SELF_HOSTED_OWNER_EMAIL: ${SELF_HOSTED_OWNER_EMAIL:-}
       SELF_HOSTED_SOURCE_URL: ${SELF_HOSTED_SOURCE_URL:-https://github.com/readest/readest}
       FONT_BASE_URL: ${FONT_BASE_URL:-}
       # Server-managed Reader AI. Only enabled/model metadata enters the

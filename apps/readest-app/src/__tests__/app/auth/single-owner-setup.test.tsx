@@ -35,7 +35,10 @@ describe('single-owner first-run setup', () => {
     render(<SingleOwnerAuthPage />);
 
     expect(await screen.findByRole('heading', { name: 'Set up Bukshelf' })).toBeTruthy();
-    expect(screen.getByText('Create the password for this server’s single owner.')).toBeTruthy();
+    expect(screen.getByText('Create the single owner account for this server.')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Email'), {
+      target: { value: 'owner@example.com' },
+    });
     fireEvent.change(screen.getByLabelText('Password'), {
       target: { value: 'correct horse battery staple' },
     });
@@ -44,7 +47,9 @@ describe('single-owner first-run setup', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Create owner' }));
 
-    await waitFor(() => expect(mocks.setup).toHaveBeenCalledWith('correct horse battery staple'));
+    await waitFor(() =>
+      expect(mocks.setup).toHaveBeenCalledWith('owner@example.com', 'correct horse battery staple'),
+    );
     expect(mocks.login).toHaveBeenCalledWith('owner-token', {
       id: 'owner',
       email: 'owner@example.com',

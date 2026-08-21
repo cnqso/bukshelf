@@ -5,12 +5,17 @@ import { getDatabasePath, getLegacyDatabaseUrl } from './config';
 
 const args = process.argv.slice(2);
 const passwordFromStdin = args.includes('--password-stdin');
-const positional = args.filter((argument) => argument !== '--password-stdin');
+const emailIndex = args.indexOf('--email');
+const emailArgument = emailIndex === -1 ? undefined : args[emailIndex + 1];
+const positional = args.filter(
+  (argument, index) =>
+    argument !== '--password-stdin' && index !== emailIndex && index !== emailIndex + 1,
+);
 
 const usage = () => {
   console.log(`Usage:
-  bun src/cli.ts auth setup [--password-stdin]
-  bun src/cli.ts auth import-legacy
+  bun src/cli.ts auth setup [--email owner@example.com] [--password-stdin]
+  bun src/cli.ts auth import-legacy [--email owner@example.com]
   bun src/cli.ts auth reset [--password-stdin]
 
 With --password-stdin, provide the password as the first line of stdin.`);
@@ -42,10 +47,17 @@ const validatePassword = (password: string) => {
   if (password.length < 12) throw new Error('Password must contain at least 12 characters');
 };
 
+const readOwnerEmail = () => {
+  const email = (emailArgument ?? prompt('Owner email: ') ?? '').trim().toLowerCase();
+  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new Error('Enter a valid owner email');
+  }
+  return email;
+};
+
 const authSetup = async (store: AuthStore) => {
   if (store.getOwner()) throw new Error('Bukshelf owner is already configured');
-  const email = process.env.SELF_HOSTED_OWNER_EMAIL?.trim().toLowerCase();
-  if (!email) throw new Error('SELF_HOSTED_OWNER_EMAIL is required');
+  const email = readOwnerEmail();
   const password = await readPassword();
   validatePassword(password);
   store.createOwner({
@@ -58,8 +70,7 @@ const authSetup = async (store: AuthStore) => {
 
 const importLegacyOwner = async (store: AuthStore) => {
   if (store.getOwner()) throw new Error('Bukshelf owner is already configured');
-  const email = process.env.SELF_HOSTED_OWNER_EMAIL?.trim().toLowerCase();
-  if (!email) throw new Error('SELF_HOSTED_OWNER_EMAIL is required');
+  const email = readOwnerEmail();
   const legacy = new SQL(getLegacyDatabaseUrl());
   try {
     const rows = await legacy`
