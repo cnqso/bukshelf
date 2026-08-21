@@ -130,6 +130,8 @@ browser/native smoke test appropriate to the changed behavior.
   files. Each snapshot has a SHA-256 manifest; restore verifies every byte and
   stages replacements before swapping the live data. Maintenance commands
   require the server to be stopped, and restore requires an explicit force flag.
+- A minimal production Bun image and Compose service persist the whole server in
+  one `/data` volume; no database or object-storage container is required.
 
 ## Development Runtime
 
@@ -163,6 +165,9 @@ that have actually migrated.
   touching development data.
 - The production web build, full frontend type check/lint, Compose validation,
   and live catalog/cover requests pass.
+- `pnpm test:docker:bukshelf` proves fresh-volume setup, cold start, HTTP writes,
+  stopped-server backup, destructive mutation, restore into a new container,
+  and recovery of authentication, SQLite metadata, and book bytes.
 - The signed-out page renders the real SQLite catalog through Bun with no
   browser console errors. Runtime configuration points authenticated library,
   file, classic sync, replica sync, and replica-key traffic directly at Bun.

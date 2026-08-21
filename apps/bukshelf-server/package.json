@@ -8,6 +8,7 @@
     "start": "bun src/server.ts",
     "import": "bun --env-file ../../docker/.env src/importLegacyCli.ts",
     "test": "bun test",
+    "test:docker": "bun e2e/docker-backup.ts",
     "auth:setup": "bun --env-file ../../docker/.env src/cli.ts auth setup",
     "auth:import-legacy": "bun --env-file ../../docker/.env src/cli.ts auth import-legacy",
     "auth:reset": "bun --env-file ../../docker/.env src/cli.ts auth reset",

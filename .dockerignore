@@ -19,6 +19,9 @@ out
 **/out
 .vercel
 **/.vercel
+docker/volumes
+apps/bukshelf-server/e2e
+apps/bukshelf-server/src/*.test.ts
 
 # Local env files
 docker/.env

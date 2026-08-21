@@ -1,0 +1,36 @@
+services:
+  bukshelf:
+    build:
+      context: ..
+      dockerfile: apps/bukshelf-server/Dockerfile
+    image: ${BUKSHELF_IMAGE:-bukshelf:local}
+    environment:
+      BUKSHELF_HOST: 0.0.0.0
+      BUKSHELF_PORT: 43175
+      BUKSHELF_DATA_DIR: /data
+      BUKSHELF_DATABASE_PATH: /data/bukshelf.sqlite
+      BUKSHELF_AUTH_ENABLED: ${BUKSHELF_AUTH_ENABLED:-true}
+      BUKSHELF_SECURE_COOKIES: ${BUKSHELF_SECURE_COOKIES:-false}
+      BUKSHELF_SESSION_SECRET: ${BUKSHELF_SESSION_SECRET:-${JWT_SECRET:-}}
+      SELF_HOSTED_OWNER_EMAIL: ${SELF_HOSTED_OWNER_EMAIL:-}
+      SELF_HOSTED_PUBLIC_LIBRARY: ${SELF_HOSTED_PUBLIC_LIBRARY:-true}
+      SITE_URL: ${SITE_URL:-http://localhost:43171}
+    ports:
+      - "127.0.0.1:${BUKSHELF_HOST_PORT:-43175}:43175"
+    volumes:
+      - bukshelf-data:/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "const response = await fetch('http://127.0.0.1:43175/health'); process.exit(response.ok ? 0 : 1)",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  bukshelf-data:
