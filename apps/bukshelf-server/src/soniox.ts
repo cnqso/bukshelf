@@ -266,8 +266,11 @@ export class SonioxService {
       }
 
       this.#record(requestId, ownerId, 'success', 200, estimatedTokens, false, {
-        outputUnits: audio.byteLength,
-        totalUnits: estimatedTokens + audio.byteLength,
+        // Encoded MP3 bytes are not Soniox output-audio tokens. Until the
+        // provider usage log is reconciled, meter only estimated input tokens
+        // and keep audio size in structured telemetry.
+        outputUnits: 0,
+        totalUnits: estimatedTokens,
         durationMs: Date.now() - startedAt,
       });
       logProviderEvent('info', 'soniox_tts', 'completed', {

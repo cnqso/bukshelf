@@ -163,6 +163,56 @@ describe('OpenRouter chat proxy', () => {
     });
   });
 
+  test('records network failures and returns a structured 502', async () => {
+    const service = makeService({
+      fetchFn: async () => {
+        throw new TypeError('connection refused');
+      },
+    });
+    const response = await service.handleChatPost(
+      chatRequest({ messages: [{ role: 'user', content: 'hi' }] }),
+      ownerId,
+    );
+
+    expect(response.status).toBe(502);
+    expect(response.headers.get('x-request-id')).toBeTruthy();
+    expect(await response.json()).toMatchObject({
+      error: { message: 'Reader AI is unavailable', type: 'upstream_error' },
+    });
+    expect(context.usage.totals('openrouter')).toMatchObject({ requests: 0, failures: 1 });
+  });
+
+  test('errors the client stream when the upstream stream is interrupted', async () => {
+    let reads = 0;
+    const service = makeService({
+      fetchFn: async () =>
+        new Response(
+          new ReadableStream<Uint8Array>({
+            pull(controller) {
+              if (reads++ === 0) {
+                controller.enqueue(
+                  new TextEncoder().encode(
+                    `data: ${JSON.stringify({ choices: [{ delta: { content: 'partial' } }] })}\n\n`,
+                  ),
+                );
+                return;
+              }
+              controller.error(new Error('upstream stream interrupted'));
+            },
+          }),
+          { headers: { 'content-type': 'text/event-stream' } },
+        ),
+    });
+    const response = await service.handleChatPost(
+      chatRequest({ messages: [{ role: 'user', content: 'hi' }] }),
+      ownerId,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.text()).rejects.toThrow('upstream stream interrupted');
+    expect(context.usage.totals('openrouter')).toMatchObject({ requests: 0, failures: 1 });
+  });
+
   test('never logs API keys or prompt text', async () => {
     const logs: string[] = [];
     const original = { info: console.info, warn: console.warn, error: console.error };

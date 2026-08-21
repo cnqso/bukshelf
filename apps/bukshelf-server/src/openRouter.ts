@@ -13,6 +13,8 @@ export const DEFAULT_CHAT_MODEL = 'google/gemini-3.6-flash';
 const AI_GATEWAY_BASE_URL = 'https://ai-gateway.vercel.sh/v1';
 const DEFAULT_MAX_OUTPUT_TOKENS = 2048;
 
+type FetchFn = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+
 export interface OpenRouterConfig {
   apiKey?: string;
   baseUrl?: string;
@@ -24,6 +26,8 @@ export interface OpenRouterConfig {
   tokensPerDay?: number;
   appReferer?: string;
   appTitle?: string;
+  /** Injectable transport for deterministic failure-path tests. */
+  fetchFn?: FetchFn;
 }
 
 interface ChatMessage {
@@ -288,11 +292,32 @@ export class OpenRouterService {
       });
     } catch (error) {
       grant.release();
+      const cancelled = isAbortError(error) || request.signal.aborted;
+      this.usage.record({
+        requestId,
+        provider: 'openrouter',
+        operation: 'chat',
+        model,
+        ownerId,
+        status: 'failed',
+        httpStatus: cancelled ? 499 : 502,
+        inputUnits: estimatedInputTokens,
+        unitsExact: false,
+        durationMs: Date.now() - now,
+        errorCategory: cancelled ? 'timeout_or_cancelled' : errorCategory(error),
+      });
       logProviderEvent('error', 'openrouter_ai', 'network_error', {
         requestId,
-        category: errorCategory(error),
+        category: cancelled ? 'timeout_or_cancelled' : errorCategory(error),
       });
-      throw error;
+      return jsonError(
+        {
+          message: cancelled ? 'Reader AI request was cancelled' : 'Reader AI is unavailable',
+          type: cancelled ? 'cancelled' : 'upstream_error',
+        },
+        cancelled ? 499 : 502,
+        { 'x-request-id': requestId },
+      );
     }
   }
 
@@ -313,23 +338,26 @@ export class OpenRouterService {
     extraHeaders?: Record<string, string>;
     signal?: AbortSignal;
   }): Promise<Response> {
-    const upstream = await fetch(`${options.baseUrl.replace(/\/+$/, '')}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${options.apiKey}`,
-        'content-type': 'application/json',
-        ...options.extraHeaders,
+    const upstream = await (this.config.fetchFn ?? fetch)(
+      `${options.baseUrl.replace(/\/+$/, '')}/chat/completions`,
+      {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${options.apiKey}`,
+          'content-type': 'application/json',
+          ...options.extraHeaders,
+        },
+        body: JSON.stringify({
+          model: options.model,
+          messages: options.system
+            ? [{ role: 'system', content: options.system }, ...options.messages]
+            : options.messages,
+          stream: true,
+          max_tokens: options.maxOutputTokens,
+        }),
+        signal: options.signal,
       },
-      body: JSON.stringify({
-        model: options.model,
-        messages: options.system
-          ? [{ role: 'system', content: options.system }, ...options.messages]
-          : options.messages,
-        stream: true,
-        max_tokens: options.maxOutputTokens,
-      }),
-      signal: options.signal,
-    });
+    );
 
     const requestId = options.metering?.requestId ?? newRequestId();
     if (!upstream.ok || !upstream.body) {
@@ -447,7 +475,7 @@ export class OpenRouterService {
           controller.close();
         } catch (error) {
           failure = error;
-          controller.close();
+          controller.error(error);
         } finally {
           finishOnce(false);
         }

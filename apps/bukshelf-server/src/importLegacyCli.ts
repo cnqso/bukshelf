@@ -89,7 +89,7 @@ const createLegacySource = (ownerEmail?: string): LegacyObjectSource => {
             ORDER BY f.updated_at ASC
           `;
 
-      return rows.map((file) => ({
+      return rows.map((file: { id: string; book_hash: string | null; file_key: string }) => ({
         id: file.id,
         bookHash: file.book_hash,
         fileKey: file.file_key,
@@ -143,12 +143,14 @@ const createLegacyMetadataSource = (ownerEmail: string): LegacyMetadataSource =>
       const id = await getOwnerId();
       const rows = await database`SELECT salt_id, alg, salt, created_at
         FROM public.replica_keys WHERE user_id = ${id} ORDER BY created_at ASC`;
-      return rows.map((row) => ({
-        saltId: row.salt_id,
-        alg: row.alg,
-        salt: Buffer.from(row.salt).toString('base64'),
-        createdAt: new Date(row.created_at).toISOString(),
-      })) as ReplicaKeyRow[];
+      return rows.map(
+        (row: { salt_id: string; alg: string; salt: Uint8Array; created_at: string | Date }) => ({
+          saltId: row.salt_id,
+          alg: row.alg,
+          salt: Buffer.from(row.salt).toString('base64'),
+          createdAt: new Date(row.created_at).toISOString(),
+        }),
+      ) as ReplicaKeyRow[];
     },
   };
 };

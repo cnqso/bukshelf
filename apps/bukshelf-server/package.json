@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "bun --env-file ../../docker/.env --watch src/server.ts",
     "start": "bun src/server.ts",
+    "typecheck": "tsc --noEmit",
     "import": "bun --env-file ../../docker/.env src/importLegacyCli.ts",
     "test": "bun test",
     "auth:setup": "bun --env-file ../../docker/.env src/cli.ts auth setup",
@@ -14,6 +15,10 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1000.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.1",
+    "typescript": "^5.9.3"
   },
   "engines": {
     "bun": ">=1.3.0"

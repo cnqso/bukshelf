@@ -74,7 +74,12 @@ describe('Soniox TTS proxy', () => {
     const totals = context.usage.totals('soniox');
     expect(totals.requests).toBe(1);
     expect(totals.exactUnits).toBe(0);
-    expect(totals.estimatedUnits).toBeGreaterThan(0);
+    expect(totals).toMatchObject({
+      inputUnits: 4,
+      outputUnits: 0,
+      totalUnits: 4,
+      estimatedUnits: 4,
+    });
     expect(context.usage.recentEvents(1)[0]).toMatchObject({
       provider: 'soniox',
       operation: 'tts',

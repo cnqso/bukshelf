@@ -123,13 +123,21 @@ export const createLegacyCatalog = (config: LegacyLibraryConfig): PublicCatalog 
         ORDER BY b.updated_at DESC
       `;
 
-      return rows.map((book) => ({
-        bookHash: book.book_hash,
-        title: book.title,
-        sourceTitle: book.source_title,
-        author: book.author,
-        coverId: book.cover_id,
-      }));
+      return rows.map(
+        (book: {
+          book_hash: string;
+          title: string | null;
+          source_title: string | null;
+          author: string | null;
+          cover_id: string | null;
+        }) => ({
+          bookHash: book.book_hash,
+          title: book.title,
+          sourceTitle: book.source_title,
+          author: book.author,
+          coverId: book.cover_id,
+        }),
+      );
     },
 
     async findCoverFile(fileId) {

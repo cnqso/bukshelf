@@ -11,6 +11,7 @@ import type { ReplicaStore } from './replicaStore';
 import type { OpenRouterService } from './openRouter';
 import type { SonioxService } from './soniox';
 import { handleProviderRoutes } from './providerRoutes';
+import type { UsageStore } from './usageStore';
 
 export const BUKSHELF_VERSION = '0.1.0-dev';
 
@@ -57,7 +58,7 @@ const json = (body: unknown, init: ResponseInit = {}) =>
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-const corsHeaders = (origin?: string) =>
+const corsHeaders = (origin?: string): Record<string, string> =>
   origin
     ? {
         'access-control-allow-origin': origin,
@@ -197,7 +198,7 @@ export const createHandler =
             { error: 'Not found' },
             { status: 404, headers: corsHeaders(config.publicOrigin) },
           );
-        return new Response(request.method === 'HEAD' ? null : cover.body, {
+        return new Response(request.method === 'HEAD' ? null : new Uint8Array(cover.body), {
           headers: {
             'content-type': image.contentType,
             'content-length': String(cover.body.byteLength),

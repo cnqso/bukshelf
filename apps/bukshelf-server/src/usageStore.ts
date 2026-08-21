@@ -1,3 +1,5 @@
+import type { SQLQueryBindings } from 'bun:sqlite';
+
 export interface UsageTotals {
   requests: number;
   failures: number;
@@ -26,6 +28,8 @@ export interface UsageEventRecord {
   costSource?: 'provider' | 'estimated' | null;
   durationMs?: number | null;
   errorCategory?: string | null;
+  /** Override the event timestamp for imports and deterministic tests. */
+  createdAt?: number;
 }
 
 export interface UsageEventRow {
@@ -151,7 +155,8 @@ export class UsageStore {
 
   totals(provider?: string, sinceMs?: number): UsageTotals {
     const clauses: string[] = [];
-    const params: Record<string, unknown> = {};
+    const params: Record<string, string | number | bigint | boolean | NodeJS.TypedArray | null> =
+      {};
     if (provider) {
       clauses.push('provider = $provider');
       params.provider = provider;
@@ -174,7 +179,7 @@ export class UsageStore {
           estimated_units: number;
           cost_usd: number | null;
         },
-        Record<string, unknown>
+        Record<string, string | number | bigint | boolean | NodeJS.TypedArray | null>
       >(
         `SELECT
            SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS success,
@@ -221,7 +226,7 @@ export class UsageStore {
     const todayStart = startOfUtcDay(now);
     const since = todayStart - Math.max(0, daysBack - 1) * DAY_MS;
     const clauses = ['created_at >= ?', 'created_at < ?'];
-    const params: unknown[] = [since, todayStart + DAY_MS];
+    const params: SQLQueryBindings[] = [since, todayStart + DAY_MS];
     if (provider) {
       clauses.push('provider = ?');
       params.push(provider);
@@ -241,7 +246,7 @@ export class UsageStore {
           estimated_units: number;
           cost_usd: number | null;
         },
-        unknown[]
+        SQLQueryBindings[]
       >(
         `SELECT
            (created_at / ${DAY_MS}) * ${DAY_MS} AS day_start,

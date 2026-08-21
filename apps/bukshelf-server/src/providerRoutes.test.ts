@@ -101,7 +101,10 @@ describe('provider routes HTTP contract', () => {
     );
     expect(dashboard.status).toBe(200);
     const body = (await dashboard.json()) as {
-      local: Record<string, { today: { requests: number }; allTime: { totalUnits: number } }>;
+      local: Record<
+        string,
+        { today: { requests: number }; allTime: { requests: number; totalUnits: number } }
+      >;
     };
     expect(body.local.openrouter.today.requests).toBe(1);
     expect(body.local.openrouter.allTime.totalUnits).toBe(14);
