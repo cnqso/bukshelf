@@ -246,6 +246,10 @@ export class WebAudioPlayer implements TTSAudioPlayer {
 
   startSession(onEvent: (event: WebAudioPlayerEvent) => void, opts?: SessionOptions): number {
     this.abortSession();
+    // A new session is an explicit play intent. Without this reset, a session
+    // created after pause remains attached to a suspended AudioContext and can
+    // synthesize/decode/schedule successfully while producing no sound.
+    this.#userPaused = false;
     const generation = ++this.#generation;
     // Consume the handover once: a session that is later aborted must not pass
     // the same deadline on to the one after it.
@@ -287,8 +291,13 @@ export class WebAudioPlayer implements TTSAudioPlayer {
     console.log(
       `[TTS] schedule ${generation}:${chunk.index} at ${start.toFixed(2)} dur ${buffer.duration.toFixed(2)}`,
     );
-    if (chunk.index === 0) {
-      session.onEvent({ type: 'chunk-start', chunkIndex: 0 });
+    // The scheduler may add this chunk only after backpressure observed the
+    // previous chunk ending. In that case its onended callback could not see a
+    // `next` chunk to announce, so scheduleChunk must announce it just like the
+    // first chunk. Without this, audio plays but the consuming generator waits
+    // forever for a chunk-start event.
+    if (chunk.index === 0 || session.chunks[chunk.index - 1]?.ended) {
+      session.onEvent({ type: 'chunk-start', chunkIndex: chunk.index });
     }
   }
 

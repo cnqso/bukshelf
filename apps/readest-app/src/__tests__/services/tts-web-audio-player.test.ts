@@ -49,6 +49,21 @@ describe('WebAudioPlayer scheduling', () => {
     ]);
   });
 
+  test('chunk-start fires when backpressure schedules a chunk after its predecessor ended', async () => {
+    const { ctx, player, events, onEvent } = setup();
+    await player.ensureContext();
+    const gen = player.startSession(onEvent);
+    player.scheduleChunk(gen, makeBuffer(1), { trimStartSec: 0, mediaScale: 1, gapSec: 0 });
+    await ctx.advanceTo(SAFETY + 1);
+
+    player.scheduleChunk(gen, makeBuffer(1), { trimStartSec: 0, mediaScale: 1, gapSec: 0 });
+
+    expect(events).toEqual([
+      { type: 'chunk-start', chunkIndex: 0 },
+      { type: 'chunk-start', chunkIndex: 1 },
+    ]);
+  });
+
   test('stale-generation scheduleChunk is a no-op', async () => {
     const { ctx, player, events, onEvent } = setup();
     await player.ensureContext();
@@ -292,6 +307,19 @@ describe('WebAudioPlayer pause/resume and interruption', () => {
     expect(ctx.state).toBe('suspended');
     await player.resumeContext();
     expect(ctx.state).toBe('running');
+  });
+
+  test('a new session clears pause intent and resumes on ensureContext', async () => {
+    const { ctx, player } = setup();
+    await player.ensureContext();
+    await player.pauseContext();
+    const resumesBefore = ctx.resumeCalls;
+
+    player.startSession(() => {});
+    await player.ensureContext();
+
+    expect(ctx.state).toBe('running');
+    expect(ctx.resumeCalls).toBeGreaterThan(resumesBefore);
   });
 
   test('auto-resumes on unexpected suspension while a session is live', async () => {

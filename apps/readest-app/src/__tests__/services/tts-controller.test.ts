@@ -25,7 +25,9 @@ vi.mock('@/services/tts/EdgeTTSClient', () => ({
 
 vi.mock('@/services/tts/SonioxTTSClient', () => ({
   SonioxTTSClient: vi.fn().mockImplementation(function (this: Record<string, unknown>) {
-    Object.assign(this, createMockTTSClient('soniox'));
+    Object.assign(this, createMockTTSClient('soniox'), {
+      setSentenceGap: vi.fn(),
+    });
   }),
 }));
 
@@ -375,6 +377,7 @@ describe('TTSController', () => {
     test('delegates to ttsEdgeClient.setSentenceGap with the given value', () => {
       controller.setSentenceGap(0.5);
       expect(controller.ttsEdgeClient.setSentenceGap).toHaveBeenCalledWith(0.5);
+      expect(controller.ttsSonioxClient.setSentenceGap).toHaveBeenCalledWith(0.5);
     });
   });
 

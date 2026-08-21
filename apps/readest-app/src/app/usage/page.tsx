@@ -12,6 +12,11 @@ import {
 } from 'react-icons/pi';
 import { useAuth } from '@/context/AuthContext';
 import { bukshelfProviderUrl, fetchWithAuth } from '@/utils/fetch';
+import {
+  clearTTSDiagnostics,
+  getTTSDiagnostics,
+  type TTSDiagnosticEvent,
+} from '@/services/tts/diagnostics';
 
 interface UsageTotals {
   requests: number;
@@ -157,10 +162,12 @@ export default function UsagePage() {
   const { token } = useAuth();
   const [data, setData] = useState<UsageData | null>(null);
   const [events, setEvents] = useState<UsageEvent[]>([]);
+  const [ttsDiagnostics, setTtsDiagnostics] = useState<readonly TTSDiagnosticEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const refresh = useCallback(async () => {
+    setTtsDiagnostics(getTTSDiagnostics().slice(-40).reverse());
     if (!token) return;
     setLoading(true);
     setError('');
@@ -468,6 +475,63 @@ export default function UsagePage() {
                     <td className='text-right tabular-nums'>{formatDuration(event.duration_ms)}</td>
                     <td className='text-right tabular-nums'>
                       {event.cost_usd === null ? '—' : formatMoney(event.cost_usd)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className='bg-base-100 mt-6 rounded-2xl p-5 shadow-sm sm:p-6'>
+          <div className='mb-4 flex items-center justify-between gap-4'>
+            <div>
+              <h2 className='text-lg font-semibold'>TTS playback diagnostics</h2>
+              <p className='text-base-content/50 text-xs'>
+                Browser session state · newest first · book text is fingerprinted, never logged
+              </p>
+            </div>
+            <button
+              className='btn btn-ghost btn-xs'
+              onClick={() => {
+                clearTTSDiagnostics();
+                setTtsDiagnostics([]);
+              }}
+            >
+              Clear
+            </button>
+          </div>
+          <div className='max-h-96 overflow-auto rounded-xl bg-base-200'>
+            <table className='table table-xs font-mono'>
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Session</th>
+                  <th>Component</th>
+                  <th>Event</th>
+                  <th>Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ttsDiagnostics.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className='text-base-content/50 py-6 text-center font-sans'>
+                      Start TTS in the reader to record playback events.
+                    </td>
+                  </tr>
+                )}
+                {ttsDiagnostics.map((entry) => (
+                  <tr key={entry.sequence}>
+                    <td className='whitespace-nowrap'>{new Date(entry.at).toLocaleTimeString()}</td>
+                    <td>{entry.sessionId?.slice(0, 8) ?? '—'}</td>
+                    <td>{entry.component}</td>
+                    <td>
+                      <span className={entry.level === 'error' ? 'text-error' : ''}>
+                        {entry.event}
+                      </span>
+                    </td>
+                    <td className='max-w-md break-all text-[10px]'>
+                      {entry.details ? JSON.stringify(entry.details) : '—'}
                     </td>
                   </tr>
                 ))}
