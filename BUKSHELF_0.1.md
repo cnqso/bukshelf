@@ -126,6 +126,10 @@ browser/native smoke test appropriate to the changed behavior.
   changing the existing Postgres or MinIO data volumes.
 - The real owner metadata import contains 1 book, 1 config, 2 notes, 1 stats
   book, and 70 page events; Bun's live incremental API returns the same keyset.
+- Bun has inspectable directory backups for SQLite, books, covers, and private
+  files. Each snapshot has a SHA-256 manifest; restore verifies every byte and
+  stages replacements before swapping the live data. Maintenance commands
+  require the server to be stopped, and restore requires an explicit force flag.
 
 ## Development Runtime
 
@@ -167,6 +171,9 @@ append `-- --password-stdin` and provide one line on standard input.
 pnpm --dir apps/bukshelf-server auth:setup
 pnpm --dir apps/bukshelf-server auth:import-legacy
 pnpm --dir apps/bukshelf-server auth:reset
+pnpm backup:bukshelf create
+pnpm backup:bukshelf verify <backup-directory>
+pnpm backup:bukshelf restore <backup-directory> --force
 ```
 
 `auth:reset` revokes every active session. The server refuses to start with
