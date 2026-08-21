@@ -142,8 +142,6 @@ export async function GET(req: Request): Promise<Response> {
       },
       openrouter: {
         chatModel: process.env['OPENROUTER_CHAT_MODEL'] || 'google/gemini-3.6-flash',
-        embeddingModel:
-          process.env['OPENROUTER_EMBEDDING_MODEL'] || 'openai/text-embedding-3-small',
       },
     },
   });

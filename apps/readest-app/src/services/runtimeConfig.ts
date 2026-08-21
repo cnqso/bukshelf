@@ -15,7 +15,6 @@ export interface ReadestRuntimeConfig {
   sonioxServerEnabled?: boolean;
   openRouterServerEnabled?: boolean;
   openRouterChatModel?: string;
-  openRouterEmbeddingModel?: string;
   fontBaseUrl?: string;
 }
 
@@ -93,8 +92,6 @@ export const getServerRuntimeConfig = (): ReadestRuntimeConfig => ({
   // which fixed models it will use. The API key remains server-only.
   openRouterServerEnabled: Boolean(process.env['OPENROUTER_API_KEY']),
   openRouterChatModel: process.env['OPENROUTER_CHAT_MODEL'] || 'google/gemini-3.6-flash',
-  openRouterEmbeddingModel:
-    process.env['OPENROUTER_EMBEDDING_MODEL'] || 'openai/text-embedding-3-small',
   // Base URL of the directory holding the self-hosted CJK webfont bundles.
   // Readest's own CDN only answers CORS for readest.com origins, so a
   // self-hosted deployment on a custom domain has to serve them itself (#5550).

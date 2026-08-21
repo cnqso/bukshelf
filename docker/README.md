@@ -55,9 +55,11 @@ container env, so custom self-hosted values work with pulled images.
 
 set `SELF_HOSTED_PRIVACY_MODE=true` to prevent PostHog from initializing. To
 enable Reader AI without exposing a credential to the browser, set
-`OPENROUTER_API_KEY`; chat and embedding requests then pass through authenticated
-server routes. The default guardrails are 2 concurrent requests, 30 requests per
-minute, 250,000 tokens per UTC day, and 2,048 output tokens per response.
+`OPENROUTER_API_KEY`; long-context chat requests then pass through an authenticated
+server route. The browser extracts literal chapter text locally—there is no
+embedding or retrieval service. The default guardrails are 900,000 input
+characters per request, 2 concurrent requests, 30 requests per minute, 5,000,000
+tokens per UTC day, and 2,048 output tokens per response.
 Signed-in users can open **Advanced Settings → Usage & Costs** to compare the
 live local safety meters with exact Soniox and OpenRouter provider billing.
 

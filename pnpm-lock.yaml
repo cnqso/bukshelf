@@ -341,9 +341,6 @@ importers:
       lucide-react:
         specifier: ^0.562.0
         version: 0.562.0(react@19.2.8)
-      lunr:
-        specifier: ^2.3.9
-        version: 2.3.9
       mammoth:
         specifier: ^1.12.0
         version: 1.12.0
@@ -477,9 +474,6 @@ importers:
       '@types/cssbeautify':
         specifier: ^0.3.5
         version: 0.3.5
-      '@types/lunr':
-        specifier: ^2.3.7
-        version: 2.3.7
       '@types/mocha':
         specifier: ^10.0.10
         version: 10.0.10
@@ -3685,9 +3679,6 @@ packages:
   '@types/katex@0.16.8':
     resolution: {integrity: sha512-trgaNyfU+Xh2Tc+ABIb44a5AYUpicB3uwirOioeOkNPPbmgRNtcWyDeeFRzjPZENO9Vq8gvVqfhaaXWLlevVwg==}
 
-  '@types/lunr@2.3.7':
-    resolution: {integrity: sha512-Tb/kUm38e8gmjahQzdCKhbdsvQ9/ppzHFfsJ0dMs3ckqQsRj+P5IkSAwFTBrBxdyr3E/LoMUUrZngjDYAjiE3A==}
-
   '@types/mdast@4.0.4':
     resolution: {integrity: sha512-kGaNbPh1k7AFzgpud/gMdvIm5xuECykRR+JnWKQno9TAXVa6WIVCGTPvYGekIDL4uwCZQSYbUxNBSb1aUo79oA==}
 
@@ -6249,9 +6240,6 @@ packages:
     resolution: {integrity: sha512-82hOAu7y0dbVuFfmO4bYF1XEwYk/mEbM5E+b1jgci/udUBEE/R7LF5Ip0CCEmXe8AybRM8L+04eP+LGZeDvkiw==}
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
-
-  lunr@2.3.9:
-    resolution: {integrity: sha512-zTU3DaZaF3Rt9rhN3uBMGQD3dD2/vFQqnvZCDv4dl5iOzq2IZQqTxu90r4E5J+nP70J3ilqVCrbho2eWaeW8Ow==}
 
   lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
@@ -12047,8 +12035,6 @@ snapshots:
 
   '@types/katex@0.16.8': {}
 
-  '@types/lunr@2.3.7': {}
-
   '@types/mdast@4.0.4':
     dependencies:
       '@types/unist': 3.0.3
@@ -14931,8 +14917,6 @@ snapshots:
   lucide-react@0.562.0(react@19.2.8):
     dependencies:
       react: 19.2.8
-
-  lunr@2.3.9: {}
 
   lz-string@1.5.0: {}
 

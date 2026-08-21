@@ -12,8 +12,6 @@ import {
 } from '@/services/ai/providers/OpenRouterProvider';
 import { DEFAULT_AI_SETTINGS, GATEWAY_MODELS, MODEL_PRICING } from '@/services/ai/constants';
 import type { AISettings, AIProviderName } from '@/services/ai/types';
-import { exportReedyMetricsBundle } from '@/services/reedy/instrumentation';
-import { isTauriAppPlatform } from '@/services/environment';
 import { BoxedList, SettingLabel, SettingsRow, SettingsSwitchRow } from './primitives';
 import { getRuntimeConfig } from '@/services/runtimeConfig';
 
@@ -70,7 +68,7 @@ const getModelOptions = (): ModelOption[] => [
 
 const AIPanel: React.FC = () => {
   const _ = useTranslation();
-  const { envConfig, appService } = useEnv();
+  const { envConfig } = useEnv();
   const { settings, setSettings, saveSettings } = useSettingsStore();
   const runtimeConfig = getRuntimeConfig();
   const serverManagedOpenRouter = runtimeConfig?.openRouterServerEnabled === true;
@@ -78,16 +76,11 @@ const AIPanel: React.FC = () => {
   const aiSettings: AISettings = settings?.aiSettings ?? DEFAULT_AI_SETTINGS;
 
   const [enabled, setEnabled] = useState(serverManagedOpenRouter || aiSettings.enabled);
-  const [reedyEnabled, setReedyEnabled] = useState(aiSettings.reedy?.enabled ?? false);
-  const [reedyAgentRuntime, setReedyAgentRuntime] = useState(
-    (aiSettings.reedy?.runtime ?? 'mvp') === 'agent',
-  );
   const [provider, setProvider] = useState<AIProviderName>(
     serverManagedOpenRouter ? 'openrouter' : aiSettings.provider,
   );
   const [ollamaUrl, setOllamaUrl] = useState(aiSettings.ollamaBaseUrl);
   const [ollamaModel, setOllamaModel] = useState(aiSettings.ollamaModel);
-  const [ollamaEmbeddingModel, setOllamaEmbeddingModel] = useState(aiSettings.ollamaEmbeddingModel);
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
   const [fetchingModels, setFetchingModels] = useState(false);
   const [gatewayKey, setGatewayKey] = useState(aiSettings.aiGatewayApiKey ?? '');
@@ -99,9 +92,6 @@ const AIPanel: React.FC = () => {
   );
   const [openrouterModel, setOpenrouterModel] = useState(
     runtimeConfig?.openRouterChatModel ?? aiSettings.openrouterModel ?? '',
-  );
-  const [openrouterEmbeddingModel, setOpenrouterEmbeddingModel] = useState(
-    runtimeConfig?.openRouterEmbeddingModel ?? aiSettings.openrouterEmbeddingModel ?? '',
   );
   const [openrouterModels, setOpenrouterModels] = useState<OpenRouterModelInfo[]>([]);
   const [openrouterFetchingModels, setOpenrouterFetchingModels] = useState(false);
@@ -254,14 +244,6 @@ const AIPanel: React.FC = () => {
 
   useEffect(() => {
     if (!isMounted.current) return;
-    if (ollamaEmbeddingModel !== aiSettings.ollamaEmbeddingModel) {
-      saveAiSetting('ollamaEmbeddingModel', ollamaEmbeddingModel);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ollamaEmbeddingModel]);
-
-  useEffect(() => {
-    if (!isMounted.current) return;
     if (gatewayKey !== (aiSettings.aiGatewayApiKey ?? '')) {
       saveAiSetting('aiGatewayApiKey', gatewayKey);
     }
@@ -292,17 +274,6 @@ const AIPanel: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverManagedOpenRouter, openrouterModel]);
-
-  useEffect(() => {
-    if (!isMounted.current) return;
-    if (
-      !serverManagedOpenRouter &&
-      openrouterEmbeddingModel !== (aiSettings.openrouterEmbeddingModel ?? '')
-    ) {
-      saveAiSetting('openrouterEmbeddingModel', openrouterEmbeddingModel);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverManagedOpenRouter, openrouterEmbeddingModel]);
 
   // Get the effective model ID to use (either selected or custom)
   const getEffectiveModelId = useCallback(() => {
@@ -391,13 +362,11 @@ const AIPanel: React.FC = () => {
         provider,
         ollamaBaseUrl: ollamaUrl,
         ollamaModel,
-        ollamaEmbeddingModel,
         aiGatewayApiKey: gatewayKey,
         aiGatewayModel: effectiveModel,
         openrouterApiKey: openrouterKey,
         openrouterBaseUrl: openrouterUrl,
         openrouterModel,
-        openrouterEmbeddingModel,
       };
       const aiProvider = getAIProvider(testSettings);
       const isHealthy = await aiProvider.healthCheck();
@@ -492,38 +461,21 @@ const AIPanel: React.FC = () => {
             />
           </div>
           {ollamaModels.length > 0 ? (
-            <>
-              <div className='flex flex-col gap-2 py-3 pe-4'>
-                <SettingLabel>{_('AI Model')}</SettingLabel>
-                <select
-                  className='select select-bordered select-sm bg-base-100 text-base-content w-full'
-                  value={ollamaModel}
-                  onChange={(e) => setOllamaModel(e.target.value)}
-                  disabled={!enabled}
-                >
-                  {ollamaModels.map((model) => (
-                    <option key={model} value={model}>
-                      {model}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className='flex flex-col gap-2 py-3 pe-4'>
-                <SettingLabel>{_('Embedding Model')}</SettingLabel>
-                <select
-                  className='select select-bordered select-sm bg-base-100 text-base-content w-full'
-                  value={ollamaEmbeddingModel}
-                  onChange={(e) => setOllamaEmbeddingModel(e.target.value)}
-                  disabled={!enabled}
-                >
-                  {ollamaModels.map((model) => (
-                    <option key={model} value={model}>
-                      {model}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </>
+            <div className='flex flex-col gap-2 py-3 pe-4'>
+              <SettingLabel>{_('AI Model')}</SettingLabel>
+              <select
+                className='select select-bordered select-sm bg-base-100 text-base-content w-full'
+                value={ollamaModel}
+                onChange={(e) => setOllamaModel(e.target.value)}
+                disabled={!enabled}
+              >
+                {ollamaModels.map((model) => (
+                  <option key={model} value={model}>
+                    {model}
+                  </option>
+                ))}
+              </select>
+            </div>
           ) : !fetchingModels ? (
             <SettingsRow
               label={<span className='text-warning text-sm'>{_('No models detected')}</span>}
@@ -636,14 +588,9 @@ const AIPanel: React.FC = () => {
           className={disabledSection}
         >
           {serverManagedOpenRouter && (
-            <>
-              <SettingsRow label={_('Chat Model')}>
-                <span className='text-base-content/70 text-sm'>{openrouterModel}</span>
-              </SettingsRow>
-              <SettingsRow label={_('Embedding Model')}>
-                <span className='text-base-content/70 text-sm'>{openrouterEmbeddingModel}</span>
-              </SettingsRow>
-            </>
+            <SettingsRow label={_('Chat Model')}>
+              <span className='text-base-content/70 text-sm'>{openrouterModel}</span>
+            </SettingsRow>
           )}
           {/* API key */}
           <div
@@ -740,115 +687,8 @@ const AIPanel: React.FC = () => {
               </span>
             )}
           </div>
-
-          {/* Embedding model — same /models listing as the LLM picker.
-              OpenAI's /v1/models doesn't tag chat vs embedding, so the two
-              selects share one list and the user picks the right one.
-              Falls back to free text when the list isn't loaded yet, so
-              the user can still type a known ID before refreshing. */}
-          <div
-            className={clsx('flex flex-col gap-2 pe-4 py-3', serverManagedOpenRouter && 'hidden')}
-          >
-            <SettingLabel>{_('Embedding Model')}</SettingLabel>
-            {openrouterModels.length > 0 ? (
-              <select
-                className='select select-bordered select-sm bg-base-100 text-base-content w-full'
-                value={openrouterEmbeddingModel}
-                onChange={(e) => setOpenrouterEmbeddingModel(e.target.value)}
-                disabled={!enabled}
-              >
-                <option value=''>{_('None (disable RAG)')}</option>
-                {openrouterModels.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name ? `${m.name} (${m.id})` : m.id}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                type='text'
-                className='input input-bordered input-sm w-full'
-                value={openrouterEmbeddingModel}
-                onChange={(e) => setOpenrouterEmbeddingModel(e.target.value)}
-                placeholder='openai/text-embedding-3-small'
-                disabled={!enabled}
-              />
-            )}
-            <span className='text-base-content/60 text-xs'>
-              {_(
-                'Optional. Leave blank if your endpoint does not support embeddings — chat will still work but RAG features will be unavailable.',
-              )}
-            </span>
-          </div>
         </BoxedList>
       )}
-
-      <BoxedList
-        title={_('Reedy Retrieval (Beta)')}
-        className={disabledSection}
-        description={
-          isTauriAppPlatform()
-            ? _(
-                'Uses Turso vector search + CFI-anchored citations. The model decides when to look up passages instead of getting them stuffed into the system prompt.',
-              )
-            : _('Reedy is desktop-only in this beta. Use the Readest desktop app to try it.')
-        }
-      >
-        <SettingsSwitchRow
-          label={_('Use Reedy retrieval')}
-          checked={reedyEnabled}
-          disabled={!enabled || !isTauriAppPlatform()}
-          onChange={() => {
-            const next = !reedyEnabled;
-            setReedyEnabled(next);
-            saveAiSetting('reedy', {
-              enabled: next,
-              runtime: reedyAgentRuntime ? 'agent' : 'mvp',
-            });
-          }}
-        />
-        <SettingsSwitchRow
-          label={_('Use agent runtime (experimental)')}
-          checked={reedyAgentRuntime}
-          disabled={!enabled || !reedyEnabled || !isTauriAppPlatform()}
-          onChange={() => {
-            const next = !reedyAgentRuntime;
-            setReedyAgentRuntime(next);
-            saveAiSetting('reedy', {
-              enabled: reedyEnabled,
-              runtime: next ? 'agent' : 'mvp',
-            });
-          }}
-        />
-        <div className='flex min-h-14 items-center justify-between gap-3 pe-4'>
-          <div className='flex min-w-0 flex-col gap-0.5'>
-            <SettingLabel>{_('Send Reedy feedback')}</SettingLabel>
-          </div>
-          <button
-            className='btn btn-outline btn-sm'
-            disabled={!enabled || !isTauriAppPlatform() || !appService}
-            onClick={async () => {
-              if (!appService) return;
-              try {
-                const bundle = await exportReedyMetricsBundle(appService);
-                const blob = new Blob([bundle], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `reedy-feedback-${new Date().toISOString().slice(0, 10)}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-              } catch (err) {
-                console.error('[Reedy] feedback export failed', err);
-              }
-            }}
-          >
-            {_('Download')}
-          </button>
-        </div>
-      </BoxedList>
 
       <BoxedList title={_('Connection')} className={disabledSection}>
         <div className='flex min-h-14 items-center justify-between gap-3 pe-4'>

@@ -50,7 +50,7 @@ export class OpenRouterUsageMeter {
 
     const maxConcurrent = numberFromEnv('OPENROUTER_MAX_CONCURRENT', 2);
     const requestsPerMinute = numberFromEnv('OPENROUTER_REQUESTS_PER_MINUTE', 30);
-    const tokensPerDay = numberFromEnv('OPENROUTER_TOKENS_PER_DAY', 250_000);
+    const tokensPerDay = numberFromEnv('OPENROUTER_TOKENS_PER_DAY', 5_000_000);
     let reason: string | null = null;
     let retryAfterSeconds = 1;
     if (this.#activeRequests >= maxConcurrent) {
@@ -112,7 +112,7 @@ export class OpenRouterUsageMeter {
       limits: {
         maxConcurrent: numberFromEnv('OPENROUTER_MAX_CONCURRENT', 2),
         requestsPerMinute: numberFromEnv('OPENROUTER_REQUESTS_PER_MINUTE', 30),
-        tokensPerDay: numberFromEnv('OPENROUTER_TOKENS_PER_DAY', 250_000),
+        tokensPerDay: numberFromEnv('OPENROUTER_TOKENS_PER_DAY', 5_000_000),
         maxOutputTokens: numberFromEnv('OPENROUTER_MAX_OUTPUT_TOKENS', 2_048),
       },
       day: this.#day,

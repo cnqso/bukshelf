@@ -170,7 +170,6 @@ export async function loadSettings(ctx: Context): Promise<SystemSettings> {
       provider: 'openrouter',
       openrouterApiKey: undefined,
       openrouterModel: runtimeConfig.openRouterChatModel,
-      openrouterEmbeddingModel: runtimeConfig.openRouterEmbeddingModel,
     };
   }
   if (runtimeConfig?.privacyMode) settings.telemetryEnabled = false;

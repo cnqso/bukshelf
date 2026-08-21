@@ -4,7 +4,10 @@ import type { ModelMessage } from 'ai';
 import { estimateOpenRouterTokens, openRouterUsageMeter } from '@/services/ai/openRouterUsageMeter';
 import { validateUserAndToken } from '@/utils/access';
 
-const MAX_REQUEST_CHARACTERS = 200_000;
+const maxRequestCharacters = () => {
+  const configured = Number.parseInt(process.env['OPENROUTER_MAX_INPUT_CHARACTERS'] || '', 10);
+  return Number.isFinite(configured) && configured > 0 ? configured : 900_000;
+};
 
 export async function GET(req: Request): Promise<Response> {
   const { user, token } = await validateUserAndToken(req.headers.get('authorization'));
@@ -14,7 +17,6 @@ export async function GET(req: Request): Promise<Response> {
   }
   return Response.json({
     model: process.env['OPENROUTER_CHAT_MODEL'] || 'google/gemini-3.6-flash',
-    embeddingModel: process.env['OPENROUTER_EMBEDDING_MODEL'] || 'openai/text-embedding-3-small',
     usage: openRouterUsageMeter.snapshot(),
   });
 }
@@ -36,7 +38,7 @@ export async function POST(req: Request): Promise<Response> {
     }
 
     const serializedPrompt = `${body.system ?? ''}\n${JSON.stringify(body.messages)}`;
-    if (serializedPrompt.length > MAX_REQUEST_CHARACTERS) {
+    if (serializedPrompt.length > maxRequestCharacters()) {
       return Response.json({ error: 'AI request is too large' }, { status: 413 });
     }
 

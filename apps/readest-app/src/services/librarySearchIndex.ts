@@ -98,7 +98,7 @@ export const beginSearchIndex = async (
 };
 
 // DELETE+INSERT rather than UPDATE: Tantivy-era wasm builds have a known
-// UPDATE regression (see reedy migration notes), and rebuilds always replace.
+// UPDATE regression, and rebuilds always replace.
 export const writeSearchIndexSection = async (
   db: DatabaseService,
   idx: number,

@@ -25,17 +25,11 @@ export const DEFAULT_AI_SETTINGS: AISettings = {
 
   ollamaBaseUrl: 'http://127.0.0.1:11434',
   ollamaModel: 'llama3.2',
-  ollamaEmbeddingModel: 'nomic-embed-text',
 
   aiGatewayModel: 'google/gemini-2.5-flash-lite',
-  aiGatewayEmbeddingModel: 'openai/text-embedding-3-small',
 
   openrouterBaseUrl: 'https://openrouter.ai/api/v1',
   openrouterModel: '',
-  openrouterEmbeddingModel: '',
 
   spoilerProtection: true,
-  maxContextChunks: 10,
-  indexingMode: 'on-demand',
-  reedy: { enabled: false },
 };

@@ -84,6 +84,10 @@ browser/native smoke test appropriate to the changed behavior.
 - The existing Docker/Supabase/MinIO stack runs locally on uncommon ports.
 - The web frontend is branded Bukshelf and exposes a safe public bookshelf.
 - Soniox TTS, OpenRouter Reader AI, and provider usage metering are working.
+- Reader AI is deliberately long-context rather than retrieval-augmented: the
+  browser extracts literal chapter text and sends a bounded context directly
+  to the chat model. The embedding endpoint, vector/BM25 indexes, Reedy/Turso
+  retrieval runtime, indexing UI, and embedding-model settings are removed.
 - The Bun migration server supplies health and capability discovery endpoints,
   can serve a configured static web bundle, and now owns the anonymous public
   bookshelf and cover-delivery API.
@@ -258,7 +262,9 @@ stopped, and the primary checkout contains no tracked runtime data.
 
 ## Next Step
 
-Move Reader AI, Soniox TTS, and their usage meter from Next.js routes into Bun.
+Move the now chat-only Reader AI proxy, Soniox TTS, and their usage meter from
+Next.js routes into Bun. Reader AI needs one streaming OpenRouter route—there
+is no embedding or retrieval service to migrate.
 After that, audit sharing and ancillary integrations, produce the static web
 bundle, and remove the legacy Supabase/Postgres/MinIO services from the default
 runtime entirely.

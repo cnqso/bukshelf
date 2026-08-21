@@ -77,8 +77,6 @@ describe('withTimeout', () => {
 
 describe('AI_TIMEOUTS', () => {
   test('should have correct timeout values', () => {
-    expect(AI_TIMEOUTS.EMBEDDING_SINGLE).toBe(30_000);
-    expect(AI_TIMEOUTS.EMBEDDING_BATCH).toBe(120_000);
     expect(AI_TIMEOUTS.CHAT_STREAM).toBe(60_000);
     expect(AI_TIMEOUTS.HEALTH_CHECK).toBe(5_000);
     expect(AI_TIMEOUTS.OLLAMA_CONNECT).toBe(5_000);
@@ -87,7 +85,6 @@ describe('AI_TIMEOUTS', () => {
 
 describe('AI_RETRY_CONFIGS', () => {
   test('should have correct retry configs', () => {
-    expect(AI_RETRY_CONFIGS.EMBEDDING.maxRetries).toBe(3);
     expect(AI_RETRY_CONFIGS.CHAT.maxRetries).toBe(2);
     expect(AI_RETRY_CONFIGS.HEALTH_CHECK.maxRetries).toBe(1);
   });

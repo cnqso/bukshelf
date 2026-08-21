@@ -16,12 +16,7 @@ vi.mock('@/services/ai/logger', () => ({
 
 // mock ai-sdk-ollama
 vi.mock('ai-sdk-ollama', () => ({
-  createOllama: vi.fn(() => {
-    const ollamaFn = Object.assign(vi.fn(), {
-      embeddingModel: vi.fn(),
-    });
-    return ollamaFn;
-  }),
+  createOllama: vi.fn(() => vi.fn()),
 }));
 
 // mock @ai-sdk/openai-compatible so OpenRouterProvider can be constructed
@@ -29,7 +24,6 @@ vi.mock('ai-sdk-ollama', () => ({
 vi.mock('@ai-sdk/openai-compatible', () => ({
   createOpenAICompatible: vi.fn(() => ({
     chatModel: vi.fn(),
-    textEmbeddingModel: vi.fn(),
   })),
 }));
 
@@ -75,14 +69,12 @@ describe('OllamaProvider', () => {
   test('healthCheck should verify model exists', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () =>
-        Promise.resolve({ models: [{ name: 'llama3.2:latest' }, { name: 'nomic-embed:latest' }] }),
+      json: () => Promise.resolve({ models: [{ name: 'llama3.2:latest' }] }),
     });
     const settings: AISettings = {
       ...DEFAULT_AI_SETTINGS,
       enabled: true,
       ollamaModel: 'llama3.2',
-      ollamaEmbeddingModel: 'nomic-embed',
     };
     const provider = new OllamaProvider(settings);
 
@@ -93,14 +85,12 @@ describe('OllamaProvider', () => {
   test('healthCheck should return false if model not found', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () =>
-        Promise.resolve({ models: [{ name: 'other-model' }, { name: 'nomic-embed:latest' }] }),
+      json: () => Promise.resolve({ models: [{ name: 'other-model' }] }),
     });
     const settings: AISettings = {
       ...DEFAULT_AI_SETTINGS,
       enabled: true,
       ollamaModel: 'llama3.2',
-      ollamaEmbeddingModel: 'nomic-embed',
     };
     const provider = new OllamaProvider(settings);
 

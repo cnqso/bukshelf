@@ -1,5 +1,5 @@
 import { createOllama } from 'ai-sdk-ollama';
-import type { LanguageModel, EmbeddingModel } from 'ai';
+import type { LanguageModel } from 'ai';
 import type { AIProvider, AISettings, AIProviderName } from '../types';
 import { aiLogger } from '../logger';
 import { AI_TIMEOUTS } from '../utils/retry';
@@ -8,7 +8,7 @@ import { getAIFetch } from '../utils/httpFetch';
 /**
  * Provider for a local (or LAN) Ollama instance.
  *
- * All outbound HTTP — both the streaming chat/embedding traffic going
+ * All outbound HTTP — both the streaming chat traffic going
  * through ai-sdk-ollama and the lightweight `/api/tags` probes used by
  * the availability/health checks — goes through {@link getAIFetch}. In
  * the Tauri app that hands the request off to the Rust HTTP transport
@@ -38,10 +38,6 @@ export class OllamaProvider implements AIProvider {
     return this.ollama(this.settings.ollamaModel || 'llama3.2');
   }
 
-  getEmbeddingModel(): EmbeddingModel {
-    return this.ollama.embeddingModel(this.settings.ollamaEmbeddingModel || 'nomic-embed-text');
-  }
-
   async isAvailable(): Promise<boolean> {
     try {
       const controller = new AbortController();
@@ -67,11 +63,7 @@ export class OllamaProvider implements AIProvider {
       if (!response.ok) return false;
       const data = await response.json();
       const modelName = this.settings.ollamaModel?.split(':')[0] ?? '';
-      const embeddingModelName = this.settings.ollamaEmbeddingModel?.split(':')[0] ?? '';
-      return (
-        data.models?.some((m: { name: string }) => m.name.includes(modelName)) &&
-        data.models?.some((m: { name: string }) => m.name.includes(embeddingModelName))
-      );
+      return data.models?.some((m: { name: string }) => m.name.includes(modelName)) ?? false;
     } catch (e) {
       aiLogger.provider.error('ollama', (e as Error).message);
       return false;

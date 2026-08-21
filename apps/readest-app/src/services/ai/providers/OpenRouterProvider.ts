@@ -1,16 +1,14 @@
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
-import type { LanguageModel, EmbeddingModel } from 'ai';
+import type { LanguageModel } from 'ai';
 import type { AIProvider, AISettings, AIProviderName } from '../types';
 import { aiLogger } from '../logger';
 import { AI_TIMEOUTS } from '../utils/retry';
 import { getAIFetch } from '../utils/httpFetch';
 import { getBrandName, getRuntimeConfig } from '@/services/runtimeConfig';
 import { fetchWithAuth } from '@/utils/fetch';
-import { createProxiedEmbeddingModel } from './ProxiedGatewayEmbedding';
 
 const DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
 const DEFAULT_MODEL = 'openai/gpt-4o-mini';
-const DEFAULT_EMBEDDING_MODEL = 'openai/text-embedding-3-small';
 
 /**
  * Provider for any OpenAI-compatible /v1/chat/completions endpoint, with
@@ -58,7 +56,7 @@ export class OpenRouterProvider implements AIProvider {
           'HTTP-Referer': 'https://readest.com',
           'X-Title': getBrandName(),
         },
-        // Route chat completions / embeddings through our environment-aware
+        // Route chat completions through our environment-aware
         // fetch so streaming responses bypass the renderer's CORS sandbox
         // when running inside Tauri.
         fetch: this.httpFetch,
@@ -73,15 +71,6 @@ export class OpenRouterProvider implements AIProvider {
     }
     const modelId = this.settings.openrouterModel || DEFAULT_MODEL;
     return this.client.chatModel(modelId);
-  }
-
-  getEmbeddingModel(): EmbeddingModel {
-    const modelId = this.settings.openrouterEmbeddingModel || DEFAULT_EMBEDDING_MODEL;
-    if (this.serverManaged && typeof window !== 'undefined') {
-      return createProxiedEmbeddingModel({ model: modelId, provider: 'openrouter' });
-    }
-    if (!this.client) throw new Error('OpenRouter client is not configured');
-    return this.client.textEmbeddingModel(modelId);
   }
 
   async isAvailable(): Promise<boolean> {

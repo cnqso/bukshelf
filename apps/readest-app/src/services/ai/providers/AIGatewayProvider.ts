@@ -1,10 +1,9 @@
 import { createGateway } from 'ai';
-import type { LanguageModel, EmbeddingModel } from 'ai';
+import type { LanguageModel } from 'ai';
 import type { AIProvider, AISettings, AIProviderName } from '../types';
 import { aiLogger } from '../logger';
 import { GATEWAY_MODELS } from '../constants';
 import { AI_TIMEOUTS } from '../utils/retry';
-import { createProxiedEmbeddingModel } from './ProxiedGatewayEmbedding';
 
 export class AIGatewayProvider implements AIProvider {
   id: AIProviderName = 'ai-gateway';
@@ -29,20 +28,6 @@ export class AIGatewayProvider implements AIProvider {
   getModel(): LanguageModel {
     const modelId = this.settings.aiGatewayModel || GATEWAY_MODELS.GEMINI_FLASH_LITE;
     return this.gateway(modelId);
-  }
-
-  getEmbeddingModel(): EmbeddingModel {
-    const embedModel = this.settings.aiGatewayEmbeddingModel || 'openai/text-embedding-3-small';
-
-    if (typeof window !== 'undefined') {
-      return createProxiedEmbeddingModel({
-        apiKey: this.settings.aiGatewayApiKey!,
-        model: embedModel,
-        provider: 'ai-gateway',
-      });
-    }
-
-    return this.gateway.embeddingModel(embedModel);
   }
 
   async isAvailable(): Promise<boolean> {

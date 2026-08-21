@@ -235,7 +235,7 @@ export function vectorTests(getDb: () => DatabaseService) {
   });
 
   // ---------------------------------------------------------------------------
-  // Per-book brute-force kNN — the pattern Reedy retrieval uses.
+  // Per-book brute-force kNN.
   //
   // Turso (the rust rewrite this repo wraps via @tursodatabase/database +
   // @readest/turso-database-wasm) has vector storage + distance functions
