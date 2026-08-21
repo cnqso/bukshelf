@@ -305,6 +305,11 @@ export class SonioxService {
       if (cancelled)
         return jsonError({ message: 'Soniox TTS request was cancelled', type: 'cancelled' }, 499);
       return jsonError({ message: 'Soniox TTS is unavailable', type: 'upstream_error' }, 502);
+    } finally {
+      // Every accepted limiter grant owns one concurrency slot. Without this
+      // release, a process permanently exhausted its default two slots after
+      // exactly two successful sentences and all later TTS requests queued.
+      grant.release();
     }
   }
 

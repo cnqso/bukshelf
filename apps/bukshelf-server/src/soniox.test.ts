@@ -88,6 +88,26 @@ describe('Soniox TTS proxy', () => {
     });
   });
 
+  test('releases its concurrency slot after every completed sentence', async () => {
+    context.upstream = Bun.serve({
+      port: 0,
+      fetch: () => new Response(new Uint8Array([1, 2, 3])),
+    });
+    const service = makeService({ maxConcurrent: 1, maxQueueSize: 0 });
+
+    for (let sentence = 0; sentence < 4; sentence++) {
+      const response = await service.handleSynthesizePost(
+        synthesizeRequest({ ...validBody, input: `Sentence ${sentence + 1}` }),
+        ownerId,
+      );
+      expect(response.status).toBe(200);
+      await response.arrayBuffer();
+      expect(service.snapshot().activeRequests).toBe(0);
+    }
+
+    expect(context.usage.totals('soniox').requests).toBe(4);
+  });
+
   test('validates input, voice, and language', async () => {
     const service = makeService();
     for (const body of [
