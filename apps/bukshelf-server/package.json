@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "BUKSHELF_NEXT_DIR=../readest-app bun --env-file ../../docker/.env src/server.ts",
+    "dev:fresh": "bun --env-file ../../docker/.env src/devFresh.ts && bun run dev",
     "start": "bun src/server.ts",
     "typecheck": "tsc --noEmit",
     "import": "bun --env-file ../../docker/.env src/importLegacyCli.ts",

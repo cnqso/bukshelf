@@ -2,6 +2,7 @@ import type { AuthService } from './auth';
 
 export interface AuthRouteConfig {
   auth: AuthService;
+  ownerEmail?: string;
   publicOrigin?: string;
   secureCookies: boolean;
 }
@@ -51,6 +52,40 @@ export const handleAuthRoute = async (
 
   if (pathname === '/api/auth/status' && request.method === 'GET') {
     return json({ configured: Boolean(config.auth.owner) }, config);
+  }
+
+  if (pathname === '/api/auth/setup' && request.method === 'POST') {
+    if (config.auth.owner) {
+      return json({ error: 'Bukshelf is already configured' }, config, { status: 409 });
+    }
+    if (!canAttemptLogin()) {
+      return json({ error: 'Too many setup attempts. Try again later.' }, config, { status: 429 });
+    }
+    const body = (await request.json().catch(() => null)) as { password?: unknown } | null;
+    if (typeof body?.password !== 'string' || body.password.length < 12) {
+      return json({ error: 'Password must contain at least 12 characters' }, config, {
+        status: 400,
+      });
+    }
+    if (!config.ownerEmail) {
+      return json({ error: 'SELF_HOSTED_OWNER_EMAIL is not configured' }, config, { status: 503 });
+    }
+    attempts.push(Date.now());
+    const session = await config.auth.setupOwner(config.ownerEmail, body.password);
+    if (!session) {
+      return json({ error: 'Bukshelf was configured by another request' }, config, { status: 409 });
+    }
+    attempts.length = 0;
+    return json(
+      { accessToken: session.accessToken, expiresAt: session.expiresAt, user: session.user },
+      config,
+      {
+        status: 201,
+        headers: {
+          'set-cookie': config.auth.sessionCookie(session.accessToken, config.secureCookies),
+        },
+      },
+    );
   }
 
   if (pathname === '/api/auth/login' && request.method === 'POST') {

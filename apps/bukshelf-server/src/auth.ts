@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import type { AuthStore, OwnerRecord } from './authStore';
 
 const SESSION_COOKIE = 'bukshelf_session';
@@ -77,6 +77,17 @@ export class AuthService {
       ? await Bun.password.verify(password, owner.passwordHash).catch(() => false)
       : false;
     if (!passwordMatches || !owner) return null;
+    return this.issue(owner);
+  }
+
+  async setupOwner(email: string, password: string): Promise<AuthSession | null> {
+    if (this.owner) return null;
+    const owner: OwnerRecord = {
+      id: randomUUID(),
+      email,
+      passwordHash: await Bun.password.hash(password, { algorithm: 'argon2id' }),
+    };
+    if (!this.store.createOwner(owner)) return null;
     return this.issue(owner);
   }
 

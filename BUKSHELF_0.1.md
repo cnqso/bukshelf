@@ -32,7 +32,7 @@ Bukshelf
 
 Authentication is intentionally minimal:
 
-- The owner sets the password during initial server startup.
+- The owner creates the password in a one-time browser setup screen.
 - The server stores a strong password hash, never the password.
 - Web sessions use secure cookies; native clients use scoped bearer sessions.
 - Account recovery is an explicit CLI command run on the server.
@@ -164,7 +164,9 @@ browser/native smoke test appropriate to the changed behavior.
 | Bun migration server | `http://localhost:43175` |
 | Legacy Postgres bridge (migration only) | `localhost:43176` |
 
-Run the Bun server from the repository root with `pnpm dev:bukshelf`. Its
+Run the Bun server from the repository root with `pnpm dev:bukshelf`. Use
+`pnpm dev:bukshelf:fresh` to erase the repository-local Bukshelf development
+data directory and relaunch the complete first-run flow. Its
 discovery document is at `/.well-known/bukshelf` and advertises only capabilities
 that have actually migrated.
 
@@ -180,8 +182,8 @@ that have actually migrated.
 - Bun handler tests cover discovery, catalog privacy, image validation, CORS,
   static assets, authenticated streamed file transfers, SQLite file metadata,
   metering, bulk deletion, traversal rejection, and missing routes.
-- A separate Playwright lane boots an ephemeral Bun/SQLite/filesystem backend
-  and Next frontend on ports 43282/43281. It verifies the public shelf, cover
+- A separate Playwright lane boots an ephemeral unified Bun/Next server with
+  SQLite/filesystem storage on port 43281. It verifies the public shelf, cover
   privacy, invalid and valid owner login, private library sync, authenticated
   book/cover downloads, direct Bun routing, and session restoration without
   touching development data.
@@ -203,13 +205,15 @@ append `-- --password-stdin` and provide one line on standard input.
 pnpm --dir apps/bukshelf-server auth:setup
 pnpm --dir apps/bukshelf-server auth:import-legacy
 pnpm --dir apps/bukshelf-server auth:reset
+pnpm dev:bukshelf:fresh
 pnpm backup:bukshelf create
 pnpm backup:bukshelf verify <backup-directory>
 pnpm backup:bukshelf restore <backup-directory> --force
 ```
 
-`auth:reset` revokes every active session. The server refuses to start with
-`BUKSHELF_AUTH_ENABLED=true` until an owner has been configured.
+`auth:reset` revokes every active session. An empty server starts in setup mode;
+the configured owner email is fixed by `SELF_HOSTED_OWNER_EMAIL`, and the setup
+endpoint permanently closes after the first password is created.
 
 ## Next Step
 

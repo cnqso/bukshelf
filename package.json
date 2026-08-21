@@ -10,6 +10,7 @@
     "tauri": "pnpm --filter @readest/readest-app tauri",
     "dev-web": "pnpm --filter @readest/readest-app dev-web",
     "dev:bukshelf": "bun --cwd apps/bukshelf-server dev",
+    "dev:bukshelf:fresh": "bun --cwd apps/bukshelf-server dev:fresh",
     "test:bukshelf": "bun --cwd apps/bukshelf-server test",
     "test:e2e:bukshelf": "pnpm --dir apps/readest-app test:e2e:bukshelf",
     "test:docker:bukshelf": "bun --cwd apps/bukshelf-server test:docker",

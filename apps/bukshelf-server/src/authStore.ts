@@ -46,13 +46,14 @@ export class AuthStore {
     return row ? { id: row.id, email: row.email, passwordHash: row.password_hash } : null;
   }
 
-  createOwner(owner: OwnerRecord): void {
-    this.database
+  createOwner(owner: OwnerRecord): boolean {
+    const result = this.database
       .query(
-        `INSERT INTO owner (singleton, id, email, password_hash, password_updated_at)
+        `INSERT OR IGNORE INTO owner (singleton, id, email, password_hash, password_updated_at)
          VALUES (1, $id, $email, $passwordHash, $now)`,
       )
       .run({ ...owner, now: Date.now() });
+    return result.changes === 1;
   }
 
   resetPassword(passwordHash: string): void {

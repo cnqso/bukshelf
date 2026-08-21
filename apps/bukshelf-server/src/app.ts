@@ -26,6 +26,7 @@ export interface ServerConfig {
   publicOrigin?: string;
   publicLibrary?: PublicLibraryService;
   auth?: AuthService;
+  ownerEmail?: string;
   files?: FileStore;
   sync?: SyncStore;
   replicas?: ReplicaStore;
@@ -110,6 +111,7 @@ export const createHandler =
     if (config.auth) {
       const authResponse = await handleAuthRoute(request, {
         auth: config.auth,
+        ownerEmail: config.ownerEmail,
         publicOrigin: config.publicOrigin,
         secureCookies: config.secureCookies ?? url.protocol === 'https:',
       });

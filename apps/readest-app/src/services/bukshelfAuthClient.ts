@@ -7,6 +7,10 @@ interface BukshelfSessionResponse {
   user: User;
 }
 
+export interface BukshelfAuthStatus {
+  configured: boolean;
+}
+
 const authRequest = async (path: string, init: RequestInit = {}) => {
   const response = await fetch(`${getBukshelfApiBaseUrl()}${path}`, {
     ...init,
@@ -17,7 +21,8 @@ const authRequest = async (path: string, init: RequestInit = {}) => {
     },
   });
   const body = (await response.json().catch(() => null)) as
-    | (Partial<BukshelfSessionResponse> & { error?: string; ok?: boolean })
+    | (Partial<BukshelfSessionResponse> &
+        Partial<BukshelfAuthStatus> & { error?: string; ok?: boolean })
     | null;
   if (!response.ok) throw new Error(body?.error || 'Authentication request failed');
   return body;
@@ -25,6 +30,21 @@ const authRequest = async (path: string, init: RequestInit = {}) => {
 
 export const loginToBukshelf = async (password: string): Promise<BukshelfSessionResponse> => {
   const body = await authRequest('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ password }),
+  });
+  if (!body?.accessToken || !body.user) throw new Error('Invalid authentication response');
+  return body as BukshelfSessionResponse;
+};
+
+export const getBukshelfAuthStatus = async (): Promise<BukshelfAuthStatus> => {
+  const body = await authRequest('/api/auth/status');
+  if (typeof body?.configured !== 'boolean') throw new Error('Invalid setup status response');
+  return body as BukshelfAuthStatus;
+};
+
+export const setupBukshelf = async (password: string): Promise<BukshelfSessionResponse> => {
+  const body = await authRequest('/api/auth/setup', {
     method: 'POST',
     body: JSON.stringify({ password }),
   });

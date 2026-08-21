@@ -135,3 +135,48 @@ test('sessions survive a server restart', async () => {
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test('an empty server performs first-run setup exactly once', async () => {
+  const store = new AuthStore(':memory:');
+  const auth = new AuthService(store, 'test-secret-that-is-deliberately-over-thirty-two-bytes');
+  const config = {
+    auth,
+    ownerEmail: 'owner@example.com',
+    secureCookies: false,
+  };
+  try {
+    const status = await handleAuthRoute(new Request('http://localhost/api/auth/status'), config);
+    expect(await status?.json()).toEqual({ configured: false });
+
+    const tooShort = await handleAuthRoute(
+      new Request('http://localhost/api/auth/setup', {
+        method: 'POST',
+        body: JSON.stringify({ password: 'short' }),
+      }),
+      config,
+    );
+    expect(tooShort?.status).toBe(400);
+
+    const setup = await handleAuthRoute(
+      new Request('http://localhost/api/auth/setup', {
+        method: 'POST',
+        body: JSON.stringify({ password: 'correct horse battery staple' }),
+      }),
+      config,
+    );
+    expect(setup?.status).toBe(201);
+    expect(setup?.headers.get('set-cookie')).toContain('bukshelf_session=');
+    expect(auth.owner?.email).toBe('owner@example.com');
+
+    const repeated = await handleAuthRoute(
+      new Request('http://localhost/api/auth/setup', {
+        method: 'POST',
+        body: JSON.stringify({ password: 'another sufficiently long password' }),
+      }),
+      config,
+    );
+    expect(repeated?.status).toBe(409);
+  } finally {
+    store.close();
+  }
+});

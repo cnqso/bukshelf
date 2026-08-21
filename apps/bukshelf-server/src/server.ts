@@ -23,11 +23,13 @@ const authStore = authEnabled ? new AuthStore(getDatabasePath()) : undefined;
 const auth = authStore
   ? new AuthService(authStore, process.env.BUKSHELF_SESSION_SECRET ?? process.env.JWT_SECRET ?? '')
   : undefined;
+const ownerEmail = process.env.SELF_HOSTED_OWNER_EMAIL?.trim().toLowerCase();
 
+if (authEnabled && !auth?.owner && !ownerEmail) {
+  throw new Error('SELF_HOSTED_OWNER_EMAIL is required to complete first-run setup');
+}
 if (authEnabled && !auth?.owner) {
-  throw new Error(
-    'Bukshelf owner is not configured. Run: pnpm --dir apps/bukshelf-server auth:setup',
-  );
+  console.log(`Bukshelf needs first-run setup for ${ownerEmail}; open /auth to create a password`);
 }
 
 const publicLibraryEnabled = process.env.SELF_HOSTED_PUBLIC_LIBRARY?.toLowerCase() === 'true';
@@ -60,6 +62,7 @@ const handler = createHandler({
   webDir: process.env.BUKSHELF_WEB_DIR,
   publicOrigin: process.env.SITE_URL,
   auth,
+  ownerEmail,
   files,
   sync,
   replicas,
