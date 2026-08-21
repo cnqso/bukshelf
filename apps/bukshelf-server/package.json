@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "BUKSHELF_NEXT_DIR=../readest-app bun --env-file ../../docker/.env --watch src/server.ts",
+    "dev": "BUKSHELF_NEXT_DIR=../readest-app bun --env-file ../../docker/.env src/server.ts",
     "start": "bun src/server.ts",
     "typecheck": "tsc --noEmit",
     "import": "bun --env-file ../../docker/.env src/importLegacyCli.ts",
