@@ -25,6 +25,21 @@ export interface FileListOptions {
 
 const FILE_KEY = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*\\)[^\0]{1,1024}$/;
 
+/**
+ * Readest clients address cloud book files as `Readest/Books/<hash>/...`.
+ * Bukshelf's canonical object store deliberately drops that product-specific
+ * prefix, while the earlier migration helpers used `books/<hash>/...`.
+ * Accept both spellings at the API boundary so they resolve to one physical
+ * object instead of duplicating book bytes under `files/`.
+ */
+const parseBookFileKey = (fileKey: string): { bookHash: string; name: string } | null => {
+  const parts = fileKey.split('/');
+  const bookOffset =
+    parts[0] === 'books' ? 1 : parts[0] === 'Readest' && parts[1] === 'Books' ? 2 : undefined;
+  if (bookOffset === undefined || parts.length < bookOffset + 2) return null;
+  return { bookHash: parts[bookOffset]!, name: parts.at(-1)!.toLowerCase() };
+};
+
 export class FileStoreError extends Error {}
 
 export class FileStore {
@@ -310,9 +325,9 @@ export class FileStore {
 
   private canonicalTarget(fileKey: string, bookHash?: string): string | undefined {
     if (!this.legacyObjects || !bookHash) return undefined;
-    const parts = fileKey.split('/');
-    if (parts[0] !== 'books' || parts[1] !== bookHash) return undefined;
-    const name = parts.at(-1)!.toLowerCase();
+    const parsed = parseBookFileKey(fileKey);
+    if (!parsed || parsed.bookHash !== bookHash) return undefined;
+    const { name } = parsed;
     const extension = extname(name).slice(1);
     if (name.startsWith('cover.') && isCoverExtension(extension))
       return this.legacyObjects.coverPath(bookHash, extension);
@@ -323,10 +338,9 @@ export class FileStore {
   private async readLegacy(
     fileKey: string,
   ): Promise<{ file: ReturnType<typeof Bun.file>; contentType?: string } | null> {
-    const parts = fileKey.split('/');
-    if (!this.legacyObjects || parts.length < 3 || parts[0] !== 'books') return null;
-    const bookHash = parts[1]!;
-    const name = parts.at(-1)!.toLowerCase();
+    const parsed = parseBookFileKey(fileKey);
+    if (!this.legacyObjects || !parsed) return null;
+    const { bookHash, name } = parsed;
     if (name.startsWith('cover.')) {
       const cover = await this.legacyObjects.readCover(bookHash);
       return cover ? { file: Bun.file(cover.path), contentType: cover.contentType } : null;

@@ -156,6 +156,11 @@ that have actually migrated.
 - Bun handler tests cover discovery, catalog privacy, image validation, CORS,
   static assets, authenticated streamed file transfers, SQLite file metadata,
   metering, bulk deletion, traversal rejection, and missing routes.
+- A separate Playwright lane boots an ephemeral Bun/SQLite/filesystem backend
+  and Next frontend on ports 43282/43281. It verifies the public shelf, cover
+  privacy, invalid and valid owner login, private library sync, authenticated
+  book/cover downloads, direct Bun routing, and session restoration without
+  touching development data.
 - The production web build, full frontend type check/lint, Compose validation,
   and live catalog/cover requests pass.
 - The signed-out page renders the real SQLite catalog through Bun with no

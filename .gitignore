@@ -12,6 +12,8 @@ docker/volumes/bukshelf-data/
 
 # testing
 /coverage
+/apps/readest-app/playwright-report*/
+/apps/readest-app/test-results/
 
 # next.js
 /.next/
