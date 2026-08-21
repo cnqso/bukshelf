@@ -126,7 +126,15 @@ export class SonioxTTSClient implements TTSClient {
       if (event.type === 'chunk-start')
         queue.push({ kind: 'chunk-start', index: event.chunkIndex });
       else if (event.type === 'session-end') queue.push({ kind: 'session-end' });
-      else queue.push({ kind: 'error', message: event.message });
+      else if (event.type === 'chunk-end') {
+        recordTTSDiagnostic({
+          sessionId: id,
+          component: 'audio-player',
+          event: 'audio-end',
+          level: event.recovered ? 'warn' : 'info',
+          details: { index: event.chunkIndex, watchdogRecovered: event.recovered },
+        });
+      } else queue.push({ kind: 'error', message: event.message });
     });
     const abortHandler = () => this.#cancel(active, 'abort-signal');
     active = {

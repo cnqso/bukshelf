@@ -233,7 +233,7 @@ export class BufferedTTSClient implements TTSClient {
           queue.push({ kind: 'chunk-start', index: event.chunkIndex });
         } else if (event.type === 'session-end') {
           queue.push({ kind: 'session-end' });
-        } else {
+        } else if (event.type === 'context-error') {
           queue.push({ kind: 'error', message: event.message });
         }
       },

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { WebAudioPlayer, type WebAudioPlayerEvent } from '@/services/tts/WebAudioPlayer';
 import { FakeAudioContext, makeBuffer } from './tts-fake-audio';
@@ -45,6 +45,7 @@ describe('WebAudioPlayer scheduling', () => {
     await ctx.advanceTo(SAFETY + 2);
     expect(events).toEqual([
       { type: 'chunk-start', chunkIndex: 0 },
+      { type: 'chunk-end', chunkIndex: 0, recovered: false },
       { type: 'chunk-start', chunkIndex: 1 },
     ]);
   });
@@ -60,8 +61,29 @@ describe('WebAudioPlayer scheduling', () => {
 
     expect(events).toEqual([
       { type: 'chunk-start', chunkIndex: 0 },
+      { type: 'chunk-end', chunkIndex: 0, recovered: false },
       { type: 'chunk-start', chunkIndex: 1 },
     ]);
+  });
+
+  test('audio-clock watchdog recovers a missing source onended callback', async () => {
+    vi.useFakeTimers();
+    try {
+      const { ctx, player, events, onEvent } = setup();
+      await player.ensureContext();
+      const gen = player.startSession(onEvent);
+      player.scheduleChunk(gen, makeBuffer(1), { trimStartSec: 0, mediaScale: 1, gapSec: 0 });
+      player.endSession(gen);
+      ctx.sources[0]!.onended = null;
+
+      await ctx.advanceTo(SAFETY + 1);
+      await vi.advanceTimersByTimeAsync(1300);
+
+      expect(events).toContainEqual({ type: 'chunk-end', chunkIndex: 0, recovered: true });
+      expect(events).toContainEqual({ type: 'session-end' });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   test('stale-generation scheduleChunk is a no-op', async () => {

@@ -78,6 +78,7 @@ export interface SessionOptions {
 
 export type WebAudioPlayerEvent =
   | { type: 'chunk-start'; chunkIndex: number }
+  | { type: 'chunk-end'; chunkIndex: number; recovered: boolean }
   | { type: 'session-end' }
   | { type: 'context-error'; message: string };
 
@@ -88,6 +89,7 @@ interface ScheduledChunk {
   duration: number;
   timing: ChunkTiming;
   ended: boolean;
+  watchdog: ReturnType<typeof setTimeout> | null;
 }
 
 interface PlayerSession {
@@ -109,6 +111,10 @@ const MAX_PENDING_VISIBLE = 2;
 const MAX_PENDING_HIDDEN = 5;
 // Bounds decoded PCM at slow rates (0.2x stretches a 30s sentence to 150s).
 const MAX_AHEAD_SEC = 60;
+// Some browser/WebView versions occasionally omit AudioBufferSourceNode's
+// onended callback even though the source audibly finishes. A short audio-
+// clock-based fallback keeps that omission from stranding paragraph advance.
+const END_WATCHDOG_GRACE_SEC = 0.25;
 
 let sharedContext: TTSAudioContext | null = null;
 
@@ -283,11 +289,13 @@ export class WebAudioPlayer implements TTSAudioPlayer {
       duration: buffer.duration,
       timing,
       ended: false,
+      watchdog: null,
     };
     source.onended = () => this.#handleChunkEnded(session, chunk);
     session.chunks.push(chunk);
     session.nextStartTime = start + buffer.duration + Math.max(0, timing.gapSec);
     source.start(start);
+    this.#armEndWatchdog(session, chunk);
     console.log(
       `[TTS] schedule ${generation}:${chunk.index} at ${start.toFixed(2)} dur ${buffer.duration.toFixed(2)}`,
     );
@@ -321,6 +329,8 @@ export class WebAudioPlayer implements TTSAudioPlayer {
     // too, but only after session-end already recorded the real end time.
     if (!session.endedEmitted) this.#carryOverEndTime = 0;
     for (const chunk of session.chunks) {
+      if (chunk.watchdog) clearTimeout(chunk.watchdog);
+      chunk.watchdog = null;
       chunk.source.onended = null;
       try {
         chunk.source.stop();
@@ -418,9 +428,33 @@ export class WebAudioPlayer implements TTSAudioPlayer {
     return true;
   }
 
-  #handleChunkEnded(session: PlayerSession, chunk: ScheduledChunk): void {
+  #armEndWatchdog(session: PlayerSession, chunk: ScheduledChunk): void {
+    const ctx = this.#ctx;
+    if (!ctx || chunk.ended || this.#session !== session) return;
+    const expectedEnd = chunk.startTime + chunk.duration;
+    const remainingSec = expectedEnd + END_WATCHDOG_GRACE_SEC - ctx.currentTime;
+    chunk.watchdog = setTimeout(() => {
+      chunk.watchdog = null;
+      const liveCtx = this.#ctx;
+      if (!liveCtx || chunk.ended || this.#session !== session) return;
+      // The audio clock stops while paused/interrupted. Re-arm against that
+      // clock instead of treating elapsed wall time as audible completion.
+      if (liveCtx.currentTime + 0.01 < expectedEnd) {
+        this.#armEndWatchdog(session, chunk);
+        return;
+      }
+      console.warn(`[TTS] recovered missing onended for ${session.generation}:${chunk.index}`);
+      this.#handleChunkEnded(session, chunk, true);
+    }, Math.max(END_WATCHDOG_GRACE_SEC, remainingSec) * 1000);
+  }
+
+  #handleChunkEnded(session: PlayerSession, chunk: ScheduledChunk, recovered = false): void {
     if (this.#session !== session) return;
+    if (chunk.ended) return;
     chunk.ended = true;
+    if (chunk.watchdog) clearTimeout(chunk.watchdog);
+    chunk.watchdog = null;
+    session.onEvent({ type: 'chunk-end', chunkIndex: chunk.index, recovered });
     const waiters = session.waiters;
     session.waiters = [];
     for (const waiter of waiters) waiter(true);
