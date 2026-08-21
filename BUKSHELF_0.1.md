@@ -171,7 +171,9 @@ that have actually migrated.
 ## Frontend Boundary
 
 - Keep the Next.js frontend able to receive ongoing upstream Readest improvements.
-- The final self-hosted artifact runs the frontend and API from one Bun process.
+- Bun is now the single public process and HTTP listener. It hosts Next in-process:
+  migrated API paths run directly in Bun, while pages and remaining legacy API
+  routes pass to Next without a proxy or child process.
 
 ## Verification
 

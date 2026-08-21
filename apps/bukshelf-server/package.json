@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --env-file ../../docker/.env --watch src/server.ts",
+    "dev": "BUKSHELF_NEXT_DIR=../readest-app bun --env-file ../../docker/.env --watch src/server.ts",
     "start": "bun src/server.ts",
     "typecheck": "tsc --noEmit",
     "import": "bun --env-file ../../docker/.env src/importLegacyCli.ts",
@@ -16,7 +16,8 @@
     "backup": "bun --env-file ../../docker/.env src/backupCli.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1000.0"
+    "@aws-sdk/client-s3": "^3.1000.0",
+    "next": "16.2.11"
   },
   "devDependencies": {
     "@types/bun": "^1.3.1",

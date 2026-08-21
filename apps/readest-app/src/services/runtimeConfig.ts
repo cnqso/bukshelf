@@ -64,7 +64,8 @@ export const getServerRuntimeConfig = (): ReadestRuntimeConfig => ({
     process.env['API_BASE_URL'] ??
     process.env['NEXT_PUBLIC_API_BASE_URL'] ??
     process.env['SITE_URL'],
-  bukshelfApiBaseUrl: process.env['BUKSHELF_API_PUBLIC_URL'],
+  // Unified self-hosting serves the frontend and Bun API on one origin.
+  bukshelfApiBaseUrl: process.env['BUKSHELF_API_PUBLIC_URL'] ?? process.env['SITE_URL'],
   bukshelfAuthEnabled: process.env['BUKSHELF_AUTH_ENABLED']?.toLowerCase() === 'true',
   // These were previously baked as NEXT_PUBLIC_* build args; now read from runtime env so
   // the published image can be configured without rebuilding.

@@ -10,6 +10,8 @@ import { ReplicaStore } from './replicaStore';
 import { UsageStore } from './usageStore';
 import { OpenRouterService, createOpenRouterConfigFromEnv } from './openRouter';
 import { SonioxService, createSonioxConfigFromEnv } from './soniox';
+import { resolve } from 'node:path';
+import { startUnifiedServer } from './unifiedServer';
 
 const port = Number.parseInt(process.env.BUKSHELF_PORT ?? '43175', 10);
 const authEnabled = process.env.BUKSHELF_AUTH_ENABLED?.toLowerCase() === 'true';
@@ -53,23 +55,33 @@ if (publicLibraryEnabled && !dataDir) {
   );
 }
 
-const server = Bun.serve({
-  hostname: process.env.BUKSHELF_HOST ?? '127.0.0.1',
-  port,
-  fetch: createHandler({
-    webDir: process.env.BUKSHELF_WEB_DIR,
-    publicOrigin: process.env.SITE_URL,
-    auth,
-    files,
-    sync,
-    replicas,
-    secureCookies,
-    providers: usage ? { usage, openRouter, soniox } : undefined,
-    publicLibrary:
-      publicLibraryEnabled && objectStore && sync
-        ? createLocalPublicLibrary(sync, objectStore)
-        : undefined,
-  }),
+const hostname = process.env.BUKSHELF_HOST ?? '127.0.0.1';
+const handler = createHandler({
+  webDir: process.env.BUKSHELF_WEB_DIR,
+  publicOrigin: process.env.SITE_URL,
+  auth,
+  files,
+  sync,
+  replicas,
+  secureCookies,
+  providers: usage ? { usage, openRouter, soniox } : undefined,
+  publicLibrary:
+    publicLibraryEnabled && objectStore && sync
+      ? createLocalPublicLibrary(sync, objectStore)
+      : undefined,
 });
 
-console.log(`Bukshelf migration server listening on ${server.url}`);
+const nextDir = process.env.BUKSHELF_NEXT_DIR?.trim();
+if (nextDir) {
+  await startUnifiedServer({
+    bukshelf: handler,
+    nextDir: resolve(nextDir),
+    hostname,
+    port,
+    dev: process.env.NODE_ENV !== 'production',
+  });
+  console.log(`Bukshelf + Next listening on http://${hostname}:${port}/`);
+} else {
+  const server = Bun.serve({ hostname, port, fetch: handler });
+  console.log(`Bukshelf API listening on ${server.url}`);
+}

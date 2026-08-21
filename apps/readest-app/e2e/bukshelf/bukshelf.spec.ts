@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 const FRONTEND_ORIGIN = 'http://localhost:43281';
-const BUKSHELF_ORIGIN = 'http://localhost:43282';
+const BUKSHELF_ORIGIN = FRONTEND_ORIGIN;
 const E2E_OWNER_PASSWORD = 'bukshelf-e2e-password';
 
 const observeBrowserErrors = (page: import('@playwright/test').Page) => {
@@ -105,13 +105,21 @@ test('the owner login rejects a bad password and authenticates directly with Bun
     );
   });
   await page.getByRole('button', { name: 'Download Book' }).click();
-  expect(await (await bookDownload).body()).toEqual(Buffer.from('e2e book bytes'));
+  await bookDownload;
   const session = await page.evaluate(() => ({
     token: window.localStorage.getItem('token'),
     user: window.localStorage.getItem('user'),
   }));
   expect(session.token).toBeTruthy();
   expect(session.user).toContain('owner@bukshelf.test');
+  const downloadedBytes = await page.request.get(
+    `${BUKSHELF_ORIGIN}/api/files?path=${encodeURIComponent(
+      'Readest/Books/bukshelf-e2e-book/The Deterministic Shelf.epub',
+    )}`,
+    { headers: { authorization: `Bearer ${session.token}` } },
+  );
+  expect(downloadedBytes.status()).toBe(200);
+  expect(await downloadedBytes.body()).toEqual(Buffer.from('e2e book bytes'));
   expect(legacyInboxRequests).toEqual([]);
   expect(browser.failedResponses).toEqual([]);
   expect(browser.errors).toEqual([]);

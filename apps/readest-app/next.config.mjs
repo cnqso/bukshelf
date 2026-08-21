@@ -1,5 +1,4 @@
 import withSerwistInit from '@serwist/next';
-import withBundleAnalyzer from '@next/bundle-analyzer';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -159,8 +158,9 @@ const withPWA = pwaDisabled
       scope: '/',
     });
 
-const withAnalyzer = withBundleAnalyzer({
-  enabled: process.env.ANALYZE === 'true',
-});
+const withAnalyzer =
+  process.env.ANALYZE === 'true'
+    ? (await import('@next/bundle-analyzer')).default({ enabled: true })
+    : (config) => config;
 
 export default withPWA(withAnalyzer(nextConfig));

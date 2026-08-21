@@ -146,6 +146,12 @@ try {
 
   console.log('[docker-e2e] cold-starting and seeding through HTTP');
   let baseUrl = await start();
+  const frontend = await request(baseUrl, '/');
+  await assertStatus(frontend, 200);
+  assert.match(await frontend.text(), /<!DOCTYPE html>/i);
+  const runtimeConfig = await request(baseUrl, '/runtime-config.js');
+  await assertStatus(runtimeConfig, 200);
+  assert.match(await runtimeConfig.text(), /bukshelfApiBaseUrl/);
   const discovery = await request(baseUrl, '/.well-known/bukshelf');
   await assertStatus(discovery, 200);
   const capabilities = (
