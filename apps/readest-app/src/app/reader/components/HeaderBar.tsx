@@ -2,6 +2,7 @@ import clsx from 'clsx';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { VscLibrary } from 'react-icons/vsc';
 import { MdOutlineMenu } from 'react-icons/md';
+import { RiFontFamily } from 'react-icons/ri';
 
 import { Insets } from '@/types/misc';
 import { useEnv } from '@/context/EnvContext';
@@ -58,7 +59,8 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
 }) => {
   const _ = useTranslation();
   const { envConfig, appService } = useEnv();
-  const { settings } = useSettingsStore();
+  const { settings, setRequestedPanel, setSettingsDialogBookKey, setSettingsDialogOpen } =
+    useSettingsStore();
   const headerRef = useRef<HTMLDivElement>(null);
   const { isTrafficLightVisible } = useTrafficLight(headerRef);
   const { trafficLightInFullscreen, setTrafficLightVisibility } = useTrafficLightStore();
@@ -102,6 +104,13 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
   const handleAnnotationQuickActionSelect = (action: AnnotationToolType | null) => {
     if (viewSettings?.annotationQuickAction === action) action = null;
     saveViewSettings(envConfig, bookKey, 'annotationQuickAction', action, false, true);
+  };
+
+  const openFontLayoutSettings = () => {
+    setHoveredBookKey('');
+    setSettingsDialogBookKey(bookKey);
+    setRequestedPanel('Font');
+    setSettingsDialogOpen(true);
   };
 
   useEffect(() => {
@@ -310,6 +319,17 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
         </div>
 
         <div className='header-tools-end bg-base-100 z-20 ms-auto flex h-full min-w-max items-center gap-x-4 ps-2 max-[350px]:gap-x-2'>
+          {!forceMobileLayout && (
+            <button
+              type='button'
+              aria-label={_('Font & Layout')}
+              title={_('Font & Layout')}
+              className='btn btn-ghost hidden h-8 min-h-8 w-8 p-0 sm:flex'
+              onClick={openFontLayoutSettings}
+            >
+              <RiFontFamily size={iconSize18} />
+            </button>
+          )}
           <NotebookToggler bookKey={bookKey} />
           <Dropdown
             label={_('View Options')}

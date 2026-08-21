@@ -44,7 +44,7 @@ const readPassword = async (): Promise<string> => {
 };
 
 const validatePassword = (password: string) => {
-  if (password.length < 12) throw new Error('Password must contain at least 12 characters');
+  if (password.length === 0) throw new Error('Password is required');
 };
 
 const readOwnerEmail = () => {

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import HeaderBar from '@/app/reader/components/HeaderBar';
@@ -16,6 +16,11 @@ vi.mock('@/hooks/useTranslation', () => ({
 }));
 
 const useEnvMock = vi.fn();
+const settingsMocks = vi.hoisted(() => ({
+  setRequestedPanel: vi.fn(),
+  setSettingsDialogBookKey: vi.fn(),
+  setSettingsDialogOpen: vi.fn(),
+}));
 vi.mock('@/context/EnvContext', () => ({
   useEnv: () => useEnvMock(),
 }));
@@ -23,6 +28,7 @@ vi.mock('@/context/EnvContext', () => ({
 vi.mock('@/store/settingsStore', () => ({
   useSettingsStore: () => ({
     settings: { globalReadSettings: { highlightStyle: 'highlight', highlightStyles: {} } },
+    ...settingsMocks,
   }),
 }));
 vi.mock('@/store/themeStore', () => ({
@@ -125,14 +131,13 @@ describe('HeaderBar sidebar toggle', () => {
 });
 
 describe('HeaderBar font button', () => {
-  it('is gone on every platform, since it opened the last panel rather than Font', () => {
+  it('opens the Font panel directly on desktop', () => {
     useEnvMock.mockReturnValue({ envConfig: {}, appService: { isMobile: false } });
     setViewport(1440, 900);
     renderHeader();
-    // queryByRole, not querySelector: jsdom's selector engine fails to match
-    // [aria-label="Font & Layout"] on the `&`, so a CSS-based assertion here
-    // passes whether or not the button is rendered.
-    expect(screen.queryByRole('button', { name: 'Font & Layout' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Settings' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Font & Layout' }));
+    expect(settingsMocks.setSettingsDialogBookKey).toHaveBeenCalledWith('book-1');
+    expect(settingsMocks.setRequestedPanel).toHaveBeenCalledWith('Font');
+    expect(settingsMocks.setSettingsDialogOpen).toHaveBeenCalledWith(true);
   });
 });

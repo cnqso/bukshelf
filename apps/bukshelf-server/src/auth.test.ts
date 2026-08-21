@@ -159,21 +159,21 @@ test('an empty server performs first-run setup exactly once', async () => {
     );
     expect(invalidEmail?.status).toBe(400);
 
-    const tooShort = await handleAuthRoute(
+    const emptyPassword = await handleAuthRoute(
       new Request('http://localhost/api/auth/setup', {
         method: 'POST',
-        body: JSON.stringify({ email: 'owner@example.com', password: 'short' }),
+        body: JSON.stringify({ email: 'owner@example.com', password: '' }),
       }),
       config,
     );
-    expect(tooShort?.status).toBe(400);
+    expect(emptyPassword?.status).toBe(400);
 
     const setup = await handleAuthRoute(
       new Request('http://localhost/api/auth/setup', {
         method: 'POST',
         body: JSON.stringify({
           email: 'OWNER@example.com',
-          password: 'correct horse battery staple',
+          password: 'x',
         }),
       }),
       config,

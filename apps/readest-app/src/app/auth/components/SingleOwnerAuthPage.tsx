@@ -108,12 +108,9 @@ export default function SingleOwnerAuthPage() {
               name='password'
               type='password'
               required
-              minLength={configured === false ? 12 : undefined}
               autoFocus={configured === true}
               autoComplete={configured === false ? 'new-password' : 'current-password'}
-              placeholder={
-                configured === false ? 'At least 12 characters' : 'Your Bukshelf password'
-              }
+              placeholder='Your Bukshelf password'
               className='input input-bordered eink-bordered w-full rounded-lg'
               disabled={loading || configured === null}
             />
@@ -128,7 +125,6 @@ export default function SingleOwnerAuthPage() {
                 name='confirmation'
                 type='password'
                 required
-                minLength={12}
                 autoComplete='new-password'
                 className='input input-bordered eink-bordered w-full rounded-lg'
                 disabled={loading}
