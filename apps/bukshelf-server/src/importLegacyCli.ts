@@ -8,6 +8,11 @@ import {
   redact,
 } from './legacyImport';
 import { createObjectStore } from './objectStore';
+import { AuthStore } from './authStore';
+import { getDatabasePath } from './config';
+import { SyncStore, type SyncCollection } from './syncStore';
+import { ReplicaStore, type ReplicaKeyRow, type ReplicaRow } from './replicaStore';
+import { importLegacyMetadata, type LegacyMetadataSource } from './metadataImport';
 
 /**
  * `bun run import` — copies the legacy MinIO objects listed in Postgres into
@@ -104,6 +109,50 @@ const createLegacySource = (ownerEmail?: string): LegacyObjectSource => {
   };
 };
 
+const createLegacyMetadataSource = (ownerEmail: string): LegacyMetadataSource => {
+  const database = new SQL(legacyDatabaseUrl());
+  let ownerId: string | null = null;
+  const getOwnerId = async () => {
+    if (ownerId) return ownerId;
+    const rows =
+      await database`SELECT id FROM auth.users WHERE lower(email) = lower(${ownerEmail}) LIMIT 1`;
+    ownerId = rows[0]?.id ?? null;
+    if (!ownerId) throw new Error(`Legacy owner not found: ${ownerEmail}`);
+    return ownerId;
+  };
+  return {
+    async rows(collection: SyncCollection) {
+      const id = await getOwnerId();
+      if (collection === 'books')
+        return await database`SELECT * FROM public.books WHERE user_id = ${id}`;
+      if (collection === 'configs')
+        return await database`SELECT * FROM public.book_configs WHERE user_id = ${id}`;
+      if (collection === 'notes')
+        return await database`SELECT * FROM public.book_notes WHERE user_id = ${id}`;
+      if (collection === 'stat_books')
+        return await database`SELECT * FROM public.stat_books WHERE user_id = ${id}`;
+      return await database`SELECT * FROM public.stat_pages WHERE user_id = ${id}`;
+    },
+    async replicas() {
+      const id = await getOwnerId();
+      return (await database`SELECT user_id, kind, replica_id, fields_jsonb, manifest_jsonb,
+          deleted_at_ts, reincarnation, updated_at_ts, schema_version
+        FROM public.replicas WHERE user_id = ${id}`) as unknown as ReplicaRow[];
+    },
+    async replicaKeys() {
+      const id = await getOwnerId();
+      const rows = await database`SELECT salt_id, alg, salt, created_at
+        FROM public.replica_keys WHERE user_id = ${id} ORDER BY created_at ASC`;
+      return rows.map((row) => ({
+        saltId: row.salt_id,
+        alg: row.alg,
+        salt: Buffer.from(row.salt).toString('base64'),
+        createdAt: new Date(row.created_at).toISOString(),
+      })) as ReplicaKeyRow[];
+    },
+  };
+};
+
 const main = async () => {
   const options = parseArgs(Bun.argv.slice(2));
   if (options.help) {
@@ -129,8 +178,22 @@ const main = async () => {
     onEntry,
   });
 
+  if (!options.ownerEmail) throw new Error('Set SELF_HOSTED_OWNER_EMAIL or pass --owner-email');
+  const authStore = new AuthStore(getDatabasePath());
+  const metadata = await importLegacyMetadata(
+    createLegacyMetadataSource(options.ownerEmail),
+    new SyncStore(authStore.database),
+    new ReplicaStore(authStore.database),
+  );
+  authStore.close();
+
   console.log(
     `copied=${summary.copied} skipped=${summary.skipped} missing=${summary.missing} failed=${summary.failed}`,
+  );
+  console.log(
+    `metadata books=${metadata.books} configs=${metadata.configs} notes=${metadata.notes} ` +
+      `statBooks=${metadata.statBooks} statPages=${metadata.statPages} ` +
+      `replicas=${metadata.replicas} replicaKeys=${metadata.replicaKeys}`,
   );
 
   for (const entry of summary.entries) {

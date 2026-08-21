@@ -6,6 +6,8 @@ import { createHandler } from './app';
 import { AuthService } from './auth';
 import { AuthStore } from './authStore';
 import { FileStore } from './fileStore';
+import { ReplicaStore } from './replicaStore';
+import { SyncStore } from './syncStore';
 import type { PublicLibraryService } from './publicLibrary';
 
 const coverId = '123e4567-e89b-42d3-a456-426614174000';
@@ -73,6 +75,19 @@ describe('Bukshelf server', () => {
       new Request('http://localhost/.well-known/bukshelf'),
     );
     expect((await response.json()).capabilities.files).toBe(true);
+    store.close();
+  });
+
+  test('advertises sync when both embedded sync stores are configured', async () => {
+    const store = new AuthStore(':memory:');
+    store.createOwner({ id: 'owner', email: 'owner@example.com', passwordHash: 'unused' });
+    const auth = new AuthService(store, 'test-secret-that-is-deliberately-over-thirty-two-bytes');
+    const response = await createHandler({
+      auth,
+      sync: new SyncStore(store.database),
+      replicas: new ReplicaStore(store.database),
+    })(new Request('http://localhost/.well-known/bukshelf'));
+    expect((await response.json()).capabilities.sync).toBe(true);
     store.close();
   });
 

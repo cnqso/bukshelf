@@ -3,9 +3,12 @@ import { getAPIBaseUrl } from '@/services/environment';
 import { SyncError } from '@/libs/errors';
 import type { Hlc, ReplicaRow } from '@/types/replica';
 import type { SyncErrorCode } from '@/libs/errors';
+import { getBukshelfApiBaseUrl } from '@/services/runtimeConfig';
 
-const ENDPOINT = () => `${getAPIBaseUrl()}/sync/replicas`;
-const KEYS_ENDPOINT = () => `${getAPIBaseUrl()}/sync/replica-keys`;
+const syncBase = () =>
+  getBukshelfApiBaseUrl() ? `${getBukshelfApiBaseUrl()}/api` : getAPIBaseUrl();
+const ENDPOINT = () => `${syncBase()}/sync/replicas`;
+const KEYS_ENDPOINT = () => `${syncBase()}/sync/replica-keys`;
 
 export interface ReplicaKeyRow {
   saltId: string;

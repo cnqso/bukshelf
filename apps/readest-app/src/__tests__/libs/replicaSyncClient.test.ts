@@ -6,11 +6,15 @@ vi.mock('@/utils/access', () => ({
 vi.mock('@/services/environment', () => ({
   getAPIBaseUrl: () => 'https://example.test',
 }));
+vi.mock('@/services/runtimeConfig', () => ({
+  getBukshelfApiBaseUrl: vi.fn(() => ''),
+}));
 
 import { ReplicaSyncClient } from '@/libs/replicaSyncClient';
 import { hlcPack } from '@/libs/crdt';
 import type { Hlc, ReplicaRow } from '@/types/replica';
 import { SyncError } from '@/libs/errors';
+import { getBukshelfApiBaseUrl } from '@/services/runtimeConfig';
 
 const HLC = hlcPack(1_700_000_000_000, 0, 'd') as Hlc;
 
@@ -52,6 +56,16 @@ describe('ReplicaSyncClient.push', () => {
     expect(init.headers['Content-Type']).toBe('application/json');
     expect(JSON.parse(init.body)).toEqual({ rows: [sampleRow] });
     expect(result).toEqual([sampleRow]);
+  });
+
+  test('uses the Bun API directly when Bukshelf is configured', async () => {
+    vi.mocked(getBukshelfApiBaseUrl).mockReturnValue('https://books.example');
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ rows: [sampleRow] }), { status: 200 }),
+    );
+    await new ReplicaSyncClient().push([sampleRow]);
+    expect(mockFetch.mock.calls[0]![0]).toBe('https://books.example/api/sync/replicas');
+    vi.mocked(getBukshelfApiBaseUrl).mockReturnValue('');
   });
 
   test('400 / VALIDATION → SyncError VALIDATION', async () => {

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { SQL } from 'bun';
 import { ObjectStoreError, type ObjectStore } from './objectStore';
+import type { SyncStore } from './syncStore';
 
 export interface PublicLibraryBook {
   id: string;
@@ -156,3 +157,38 @@ export const createLegacyCatalog = (config: LegacyLibraryConfig): PublicCatalog 
 
 export const createLegacyPublicLibrary = (config: LegacyLibraryConfig): PublicLibraryService =>
   createPublicLibrary(createLegacyCatalog(config), config.store);
+
+const coverIdFor = (bookHash: string) => {
+  const hex = createHash('sha256').update(`cover:${bookHash}`).digest('hex');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+};
+
+/** Final local catalog: SQLite metadata plus filesystem cover bytes. */
+export const createLocalPublicLibrary = (
+  sync: SyncStore,
+  store: ObjectStore,
+): PublicLibraryService => ({
+  async listBooks() {
+    const books = sync.publicBooks();
+    const result: PublicLibraryBook[] = [];
+    for (const book of books) {
+      const bookHash = String(book.book_hash);
+      result.push({
+        id: createHash('sha256').update(bookHash).digest('hex').slice(0, 24),
+        title: String(book.title || book.source_title || 'Untitled').trim(),
+        author: book.author ? String(book.author).trim() : null,
+        coverUrl: (await store.readCover(bookHash))
+          ? `/api/public/library/covers/${coverIdFor(bookHash)}`
+          : null,
+      });
+    }
+    return result;
+  },
+
+  async getCover(fileId) {
+    const book = sync.publicBooks().find((row) => coverIdFor(String(row.book_hash)) === fileId);
+    if (!book) return null;
+    const cover = await store.readCover(String(book.book_hash));
+    return cover ? { body: cover.body, contentType: cover.contentType } : null;
+  },
+});

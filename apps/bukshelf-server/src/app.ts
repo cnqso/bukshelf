@@ -5,6 +5,9 @@ import { detectImageType } from './imageType';
 import type { PublicLibraryService } from './publicLibrary';
 import { handleFileRoute } from './fileRoutes';
 import type { FileStore } from './fileStore';
+import { handleSyncRoute } from './syncRoutes';
+import type { SyncStore } from './syncStore';
+import type { ReplicaStore } from './replicaStore';
 
 export const BUKSHELF_VERSION = '0.1.0-dev';
 
@@ -14,6 +17,8 @@ export interface ServerConfig {
   publicLibrary?: PublicLibraryService;
   auth?: AuthService;
   files?: FileStore;
+  sync?: SyncStore;
+  replicas?: ReplicaStore;
   secureCookies?: boolean;
 }
 
@@ -107,6 +112,16 @@ export const createHandler =
         });
         if (fileResponse) return fileResponse;
       }
+
+      if (config.sync && config.replicas) {
+        const syncResponse = await handleSyncRoute(request, {
+          auth: config.auth,
+          sync: config.sync,
+          replicas: config.replicas,
+          publicOrigin: config.publicOrigin,
+        });
+        if (syncResponse) return syncResponse;
+      }
     }
 
     if (url.pathname.startsWith('/api/public/library') && request.method === 'OPTIONS') {
@@ -195,7 +210,7 @@ export const createHandler =
         capabilities: {
           authentication: Boolean(config.auth),
           library: Boolean(config.publicLibrary),
-          sync: false,
+          sync: Boolean(config.auth && config.sync && config.replicas),
           files: Boolean(config.auth && config.files),
           readerAI: false,
           textToSpeech: false,

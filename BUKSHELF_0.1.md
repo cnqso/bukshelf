@@ -89,10 +89,14 @@ browser/native smoke test appropriate to the changed behavior.
   bookshelf and cover-delivery API.
 - The public shelf frontend calls Bun directly. Its former Next.js API routes
   have been removed.
-- As a temporary migration adapter, Bun reads the existing Postgres data and
-  local filesystem objects directly; Postgres still supplies public catalog
-  metadata. Responses expose only title, author, opaque identifiers, and
-  validated cover image bytes.
+- Bun now owns classic library synchronization (books, configs, notes, reading
+  statistics), CRDT replicas (settings, dictionaries, fonts, textures, OPDS),
+  and replica passphrase salts in `bukshelf.sqlite`.
+- The classic sync tables are consolidated into one indexed JSON record table;
+  replicas retain a dedicated table because field-level HLC merging is a real
+  semantic difference, not legacy topology worth preserving.
+- The signed-out catalog now reads SQLite plus local cover files. Postgres and
+  MinIO participate only in the explicit, idempotent one-time import command.
 - Bun now owns the single owner's password hash and session registry in
   `bukshelf.sqlite`. Web login uses an HttpOnly cookie plus a bearer token for
   the existing frontend API contract; login no longer calls GoTrue.
@@ -116,6 +120,8 @@ browser/native smoke test appropriate to the changed behavior.
   they are not part of the private bookshelf storage path.
 - The legacy stack and Bun server have been smoke-tested concurrently without
   changing the existing Postgres or MinIO data volumes.
+- The real owner metadata import contains 1 book, 1 config, 2 notes, 1 stats
+  book, and 70 page events; Bun's live incremental API returns the same keyset.
 
 ## Development Runtime
 
@@ -144,8 +150,9 @@ that have actually migrated.
   metering, bulk deletion, traversal rejection, and missing routes.
 - The production web build, full frontend type check/lint, Compose validation,
   and live catalog/cover requests pass.
-- The signed-out page renders the real catalog through Bun. Existing signed-in
-  library routes remain on the legacy stack for the authentication slice.
+- The signed-out page renders the real SQLite catalog through Bun with no
+  browser console errors. Runtime configuration points authenticated library,
+  file, classic sync, replica sync, and replica-key traffic directly at Bun.
 
 ## Owner Commands
 
@@ -251,7 +258,7 @@ stopped, and the primary checkout contains no tracked runtime data.
 
 ## Next Step
 
-Move library metadata and incremental synchronization from Supabase/Postgres
-into Bun and SQLite. This is now the largest remaining cloud boundary in the
-normal signed-in reader path; file bytes and their storage-manager metadata are
-already local.
+Move Reader AI, Soniox TTS, and their usage meter from Next.js routes into Bun.
+After that, audit sharing and ancillary integrations, produce the static web
+bundle, and remove the legacy Supabase/Postgres/MinIO services from the default
+runtime entirely.

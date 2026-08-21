@@ -1,9 +1,12 @@
 import { getAPIBaseUrl } from '@/services/environment';
 import { getUserID } from '@/utils/access';
 import { fetchWithAuth } from '@/utils/fetch';
+import { getBukshelfApiBaseUrl } from '@/services/runtimeConfig';
 
 const API_ENDPOINT = getAPIBaseUrl() + '/user/delete';
 const LIBRARY_API_ENDPOINT = getAPIBaseUrl() + '/user/library';
+const libraryEndpoint = () =>
+  getBukshelfApiBaseUrl() ? `${getBukshelfApiBaseUrl()}/api/user/library` : LIBRARY_API_ENDPOINT;
 
 export const deleteUser = async () => {
   try {
@@ -28,7 +31,7 @@ export const deleteCloudLibrary = async () => {
       throw new Error('Not authenticated');
     }
 
-    await fetchWithAuth(LIBRARY_API_ENDPOINT, {
+    await fetchWithAuth(libraryEndpoint(), {
       method: 'DELETE',
     });
   } catch (error) {
