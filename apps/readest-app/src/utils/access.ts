@@ -1,10 +1,8 @@
 import { jwtDecode } from 'jwt-decode';
-import { supabase } from '@/utils/supabase';
 import { UserPlan } from '@/types/quota';
 import { DEFAULT_DAILY_TRANSLATION_QUOTA, DEFAULT_STORAGE_QUOTA } from '@/services/constants';
-import { isWebAppPlatform } from '@/services/environment';
 import { getDailyUsage } from '@/services/translators/utils';
-import { getRuntimeConfig, isBukshelfAuthEnabled } from '@/services/runtimeConfig';
+import { getBukshelfApiBaseUrl, getRuntimeConfig } from '@/services/runtimeConfig';
 
 interface Token {
   plan: UserPlan;
@@ -156,34 +154,33 @@ export const getDailyTranslationPlanData = (token: string) => {
 };
 
 export const getAccessToken = async (): Promise<string | null> => {
-  // In browser context there might be two instances of supabase one in the app route
-  // and the other in the pages route, and they might have different sessions
-  // making the access token invalid for API calls. In that case we should use localStorage.
-  if (isWebAppPlatform() || isBukshelfAuthEnabled()) {
-    return localStorage.getItem('token') ?? null;
-  }
-  const { data } = await supabase.auth.getSession();
-  return data?.session?.access_token ?? null;
+  if (typeof localStorage === 'undefined') return null;
+  return localStorage.getItem('token') ?? null;
 };
 
 export const getUserID = async (): Promise<string | null> => {
-  if (isWebAppPlatform() || isBukshelfAuthEnabled()) {
+  if (typeof localStorage !== 'undefined') {
     const user = localStorage.getItem('user') ?? '{}';
     return JSON.parse(user).id ?? null;
   }
-  const { data } = await supabase.auth.getSession();
-  return data?.session?.user?.id ?? null;
+  return null;
 };
 
 export const validateUserAndToken = async (authHeader: string | null | undefined) => {
   if (!authHeader) return {};
 
   const token = authHeader.replace('Bearer ', '');
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser(token);
-
-  if (error || !user) return {};
-  return { user, token };
+  const apiBase = getBukshelfApiBaseUrl();
+  if (!apiBase) return {};
+  try {
+    const response = await fetch(`${apiBase}/api/auth/session`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    });
+    if (!response.ok) return {};
+    const session = (await response.json()) as { user?: { id: string; email?: string } };
+    return session.user ? { user: session.user, token } : {};
+  } catch {
+    return {};
+  }
 };
