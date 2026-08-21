@@ -126,6 +126,26 @@ browser/native smoke test appropriate to the changed behavior.
   changing the existing Postgres or MinIO data volumes.
 - The real owner metadata import contains 1 book, 1 config, 2 notes, 1 stats
   book, and 70 page events; Bun's live incremental API returns the same keyset.
+- Reader AI, Soniox TTS, and usage metering have moved into Bun. The frontend
+  calls `POST/GET /api/ai/chat`, `POST/GET /api/tts/soniox`, and
+  `/api/usage[/summary|/events]` on the Bukshelf origin directly; there is no
+  fallback to Next.js routes, which have been deleted along with the in-memory
+  usage meters.
+- OpenRouter chat is a streaming OpenAI-compatible proxy: SSE deltas are
+  re-emitted as plain text, exact token counts and provider cost come from the
+  final usage chunk, and a client-supplied AI Gateway key passes through
+  unmetered. Soniox TTS keeps tts-rt-v2/Kayla MP3 behavior with queueing,
+  per-minute, and daily budgets; its locally recorded units are always marked
+  estimated because Soniox reports tokens only in its own logs.
+- Every provider request is recorded in `provider_usage_events` in
+  `bukshelf.sqlite` (provider, operation, model, status, HTTP/provider status,
+  input/output/total units, exact-vs-estimated flag, cost plus cost source,
+  duration, sanitized error category). Daily token budgets are enforced from
+  these rows, so limits survive restarts. Logs carry sizes, fingerprints,
+  timings, and status codes — never prompt text or API keys.
+- The usage dashboard reads persistent local accounting (today, session since
+  boot, all-time) alongside provider-reported billing from OpenRouter's key
+  endpoint and Soniox's usage summary.
 
 ## Development Runtime
 
@@ -262,9 +282,8 @@ stopped, and the primary checkout contains no tracked runtime data.
 
 ## Next Step
 
-Move the now chat-only Reader AI proxy, Soniox TTS, and their usage meter from
-Next.js routes into Bun. Reader AI needs one streaming OpenRouter route—there
-is no embedding or retrieval service to migrate.
-After that, audit sharing and ancillary integrations, produce the static web
-bundle, and remove the legacy Supabase/Postgres/MinIO services from the default
-runtime entirely.
+Audit the remaining Next.js routes (translation providers, sharing, payments,
+metadata search, OPDS proxying, Hardcover, Edge TTS, KOReader sync, send-to-
+reader) and choose between migrating, retaining, or deleting each one. After
+that, produce the static web bundle served by Bun and remove the legacy
+Supabase/Postgres/MinIO services from the default runtime entirely.

@@ -172,8 +172,9 @@ services:
       OPENROUTER_REQUESTS_PER_MINUTE: ${OPENROUTER_REQUESTS_PER_MINUTE:-30}
       OPENROUTER_TOKENS_PER_DAY: ${OPENROUTER_TOKENS_PER_DAY:-5000000}
       OPENROUTER_MAX_OUTPUT_TOKENS: ${OPENROUTER_MAX_OUTPUT_TOKENS:-2048}
-      # Server-only credential used by /api/tts/soniox. Never expose this as
-      # a NEXT_PUBLIC_* build argument or browser runtime setting.
+      # Server-only credential for the Soniox TTS proxy (Bukshelf Bun server).
+      # Never expose this as a NEXT_PUBLIC_* build argument or browser runtime
+      # setting.
       SONIOX_API_KEY: ${SONIOX_API_KEY:-}
       SONIOX_TTS_MAX_CONCURRENT: ${SONIOX_TTS_MAX_CONCURRENT:-2}
       SONIOX_TTS_MAX_QUEUE_SIZE: ${SONIOX_TTS_MAX_QUEUE_SIZE:-32}
