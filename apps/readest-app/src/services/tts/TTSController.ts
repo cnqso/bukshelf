@@ -23,6 +23,7 @@ import { SectionTimeline, TimelineSentence } from './SectionTimeline';
 import { hydrateProvisionalDurations } from './ttsDuration';
 import { DownloadableSentence, SectionEnumerator, TTSDownloader } from './TTSDownloader';
 import { TTSUtils } from './TTSUtils';
+import { getRuntimeConfig } from '@/services/runtimeConfig';
 import { TTSClient } from './TTSClient';
 import { startAudioKeepAlive, stopAudioKeepAlive } from './WebAudioPlayer';
 import { isValidLang } from '@/utils/lang';
@@ -379,10 +380,12 @@ export class TTSController extends EventTarget {
 
   async init() {
     const availableClients = [];
-    if (await this.ttsSonioxClient.init()) {
+    const sonioxAvailable = await this.ttsSonioxClient.init();
+    const useManagedSoniox = sonioxAvailable && getRuntimeConfig()?.sonioxServerEnabled === true;
+    if (sonioxAvailable) {
       availableClients.push(this.ttsSonioxClient);
     }
-    if (await this.ttsEdgeClient.init()) {
+    if (!useManagedSoniox && (await this.ttsEdgeClient.init())) {
       availableClients.push(this.ttsEdgeClient);
     }
     if (this.ttsNativeClient && (await this.ttsNativeClient.init())) {
@@ -394,7 +397,7 @@ export class TTSController extends EventTarget {
     }
     this.ttsClient = availableClients[0] || this.ttsWebClient;
     const preferredClientName = TTSUtils.getPreferredClient();
-    if (preferredClientName) {
+    if (preferredClientName && !useManagedSoniox) {
       const preferredClient = availableClients.find(
         (client) => client.name === preferredClientName,
       );
@@ -403,7 +406,7 @@ export class TTSController extends EventTarget {
       }
     }
     this.ttsWebVoices = await this.ttsWebClient.getAllVoices();
-    this.ttsEdgeVoices = await this.ttsEdgeClient.getAllVoices();
+    this.ttsEdgeVoices = useManagedSoniox ? [] : await this.ttsEdgeClient.getAllVoices();
     this.ttsSonioxVoices = await this.ttsSonioxClient.getAllVoices();
 
     // A book that ships its own narration should be read by its narrator, not

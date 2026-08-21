@@ -200,6 +200,7 @@ describe('TTSController', () => {
   });
 
   afterEach(async () => {
+    delete window.__READEST_RUNTIME_CONFIG;
     // Before anything that awaits a real timer: a fake-timer test that fails
     // mid-way never reaches its own useRealTimers, and would hang every test
     // after it on this shared clock.
@@ -316,6 +317,18 @@ describe('TTSController', () => {
       vi.mocked(TTSUtils.getPreferredClient).mockReturnValue('web');
       await controller.init();
       expect(controller.ttsClient.name).toBe('web');
+    });
+
+    test('uses managed Soniox without probing or restoring Edge', async () => {
+      window.__READEST_RUNTIME_CONFIG = { sonioxServerEnabled: true };
+      vi.mocked(TTSUtils.getPreferredClient).mockReturnValue('edge');
+
+      await controller.init();
+
+      expect(controller.ttsClient).toBe(controller.ttsSonioxClient);
+      expect(controller.ttsEdgeClient.init).not.toHaveBeenCalled();
+      expect(controller.ttsEdgeClient.getAllVoices).not.toHaveBeenCalled();
+      expect(controller.ttsEdgeVoices).toEqual([]);
     });
 
     test('falls back to web client when preferred client not found', async () => {
