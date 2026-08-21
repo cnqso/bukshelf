@@ -7,6 +7,9 @@ import { createLocalPublicLibrary } from './publicLibrary';
 import { FileStore } from './fileStore';
 import { SyncStore } from './syncStore';
 import { ReplicaStore } from './replicaStore';
+import { UsageStore } from './usageStore';
+import { OpenRouterService, createOpenRouterConfigFromEnv } from './openRouter';
+import { SonioxService, createSonioxConfigFromEnv } from './soniox';
 
 const port = Number.parseInt(process.env.BUKSHELF_PORT ?? '43175', 10);
 const authEnabled = process.env.BUKSHELF_AUTH_ENABLED?.toLowerCase() === 'true';
@@ -33,6 +36,11 @@ const files =
 await files?.init();
 const sync = authStore ? new SyncStore(authStore.database) : undefined;
 const replicas = authStore ? new ReplicaStore(authStore.database) : undefined;
+const usage = authStore ? new UsageStore(authStore.database) : undefined;
+const openRouter =
+  authStore && usage ? new OpenRouterService(createOpenRouterConfigFromEnv(), usage) : undefined;
+const soniox =
+  authStore && usage ? new SonioxService(createSonioxConfigFromEnv(), usage) : undefined;
 
 if (!Number.isInteger(port) || port < 1 || port > 65_535) {
   throw new Error(`Invalid BUKSHELF_PORT: ${process.env.BUKSHELF_PORT}`);
@@ -56,6 +64,7 @@ const server = Bun.serve({
     sync,
     replicas,
     secureCookies,
+    providers: usage ? { usage, openRouter, soniox } : undefined,
     publicLibrary:
       publicLibraryEnabled && objectStore && sync
         ? createLocalPublicLibrary(sync, objectStore)

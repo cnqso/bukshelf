@@ -8,8 +8,17 @@ import type { FileStore } from './fileStore';
 import { handleSyncRoute } from './syncRoutes';
 import type { SyncStore } from './syncStore';
 import type { ReplicaStore } from './replicaStore';
+import type { OpenRouterService } from './openRouter';
+import type { SonioxService } from './soniox';
+import { handleProviderRoutes } from './providerRoutes';
 
 export const BUKSHELF_VERSION = '0.1.0-dev';
+
+export interface ProviderServices {
+  usage: UsageStore;
+  openRouter?: OpenRouterService;
+  soniox?: SonioxService;
+}
 
 export interface ServerConfig {
   webDir?: string;
@@ -20,6 +29,7 @@ export interface ServerConfig {
   sync?: SyncStore;
   replicas?: ReplicaStore;
   secureCookies?: boolean;
+  providers?: ProviderServices;
 }
 
 const CONTENT_TYPES: Record<string, string> = {
@@ -122,6 +132,17 @@ export const createHandler =
         });
         if (syncResponse) return syncResponse;
       }
+
+      if (config.providers) {
+        const providerResponse = await handleProviderRoutes(request, {
+          auth: config.auth,
+          usage: config.providers.usage,
+          openRouter: config.providers.openRouter,
+          soniox: config.providers.soniox,
+          publicOrigin: config.publicOrigin,
+        });
+        if (providerResponse) return providerResponse;
+      }
     }
 
     if (url.pathname.startsWith('/api/public/library') && request.method === 'OPTIONS') {
@@ -212,9 +233,9 @@ export const createHandler =
           library: Boolean(config.publicLibrary),
           sync: Boolean(config.auth && config.sync && config.replicas),
           files: Boolean(config.auth && config.files),
-          readerAI: false,
-          textToSpeech: false,
-          usageMetering: false,
+          readerAI: Boolean(config.auth && config.providers?.openRouter?.configured),
+          textToSpeech: Boolean(config.auth && config.providers?.soniox?.configured),
+          usageMetering: Boolean(config.auth && config.providers),
         },
       });
     }
