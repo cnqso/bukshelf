@@ -4,8 +4,8 @@ import { getAIProvider } from '../providers';
 import { aiLogger } from '../logger';
 import { buildSystemPrompt } from '../prompts';
 import type { AISettings } from '../types';
-import { getRuntimeConfig } from '@/services/runtimeConfig';
-import { fetchWithAuth } from '@/utils/fetch';
+import { getBukshelfApiBaseUrl, getRuntimeConfig } from '@/services/runtimeConfig';
+import { bukshelfProviderUrl, fetchWithAuth } from '@/utils/fetch';
 
 export interface TauriAdapterOptions {
   settings: AISettings;
@@ -22,7 +22,7 @@ async function* streamViaApiRoute(
   settings: AISettings,
   abortSignal?: AbortSignal,
 ): AsyncGenerator<string> {
-  const response = await fetchWithAuth('/api/ai/chat', {
+  const response = await fetchWithAuth(bukshelfProviderUrl('/api/ai/chat'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -77,8 +77,12 @@ export function createTauriAdapter(getOptions: () => TauriAdapterOptions): ChatM
         contextTruncated,
         settings.spoilerProtection,
       );
+      // Server-managed chat always goes to the Bukshelf backend; without a
+      // configured Bukshelf endpoint we stream directly from the client
+      // provider instead of falling back to legacy Next.js API routes.
       const useApiRoute =
         typeof window !== 'undefined' &&
+        Boolean(getBukshelfApiBaseUrl()) &&
         (settings.provider === 'ai-gateway' ||
           (settings.provider === 'openrouter' &&
             getRuntimeConfig()?.openRouterServerEnabled === true));

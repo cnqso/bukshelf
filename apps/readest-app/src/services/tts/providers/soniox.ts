@@ -1,5 +1,4 @@
-import { getAPIBaseUrl } from '@/services/environment';
-import { fetchWithAuth } from '@/utils/fetch';
+import { fetchWithAuth, bukshelfProviderUrl } from '@/utils/fetch';
 import type { TTSVoice } from '../types';
 import {
   SpeechProvider,
@@ -18,7 +17,7 @@ export class SonioxSpeechProvider implements SpeechProvider {
 
   async init(): Promise<boolean> {
     try {
-      await fetchWithAuth(`${getAPIBaseUrl()}/tts/soniox`, { method: 'GET' });
+      await fetchWithAuth(bukshelfProviderUrl('/api/tts/soniox'), { method: 'GET' });
       return true;
     } catch {
       return false;
@@ -33,7 +32,7 @@ export class SonioxSpeechProvider implements SpeechProvider {
     req: SpeechSynthesisRequest,
     signal: AbortSignal,
   ): Promise<SpeechSynthesisResult> {
-    const response = await fetchWithAuth(`${getAPIBaseUrl()}/tts/soniox`, {
+    const response = await fetchWithAuth(bukshelfProviderUrl('/api/tts/soniox'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ input: req.text, lang: req.lang, voice: SONIOX_VOICE_ID }),

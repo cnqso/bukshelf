@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   PiArrowLeft,
@@ -11,43 +11,59 @@ import {
   PiSpinner,
 } from 'react-icons/pi';
 import { useAuth } from '@/context/AuthContext';
-import { fetchWithAuth } from '@/utils/fetch';
+import { bukshelfProviderUrl, fetchWithAuth } from '@/utils/fetch';
+
+interface UsageTotals {
+  requests: number;
+  failures: number;
+  rejected: number;
+  inputUnits: number;
+  outputUnits: number;
+  totalUnits: number;
+  exactUnits: number;
+  estimatedUnits: number;
+  costUsd: number;
+}
+
+interface UsageEvent {
+  id: number;
+  request_id: string;
+  provider: string;
+  operation: string;
+  model: string;
+  status: string;
+  http_status: number | null;
+  input_units: number;
+  output_units: number;
+  total_units: number;
+  units_exact: number;
+  cost_usd: number | null;
+  duration_ms: number | null;
+  error_category: string | null;
+  created_at: number;
+}
+
+interface ProviderLimits {
+  maxConcurrent?: number;
+  requestsPerMinute?: number;
+  tokensPerDay?: number;
+  maxOutputTokens?: number;
+  maxQueueSize?: number;
+  tokensPerMinutePerUser?: number;
+}
 
 interface UsageData {
   generatedAt: string;
-  local: {
-    soniox: {
-      activeRequests: number;
-      queuedRequests: number;
-      dailyRequests: number;
-      dailyCharacters: number;
-      dailyEstimatedTokens: number;
-      minuteRequests: number;
-      limits: {
-        maxConcurrent: number;
-        maxQueueSize: number;
-        maxRequestsPerMinute: number;
-        maxTokensPerMinutePerUser: number;
-        maxTokensPerDay: number;
-      };
-    };
-    openrouter: {
-      activeRequests: number;
-      requestsLastMinute: number;
-      estimatedInputTokensToday: number;
-      actualInputTokensToday: number;
-      actualOutputTokensToday: number;
-      actualTotalTokensToday: number;
-      rejectedRequestsToday: number;
-      totalRequestsToday: number;
-      limits: {
-        maxConcurrent: number;
-        requestsPerMinute: number;
-        tokensPerDay: number;
-        maxOutputTokens: number;
-      };
-    };
-  };
+  sessionStartedAt: string;
+  local: Record<
+    'openrouter' | 'soniox',
+    {
+      today: UsageTotals;
+      session: UsageTotals;
+      allTime: UsageTotals;
+      limits?: ProviderLimits | null;
+    }
+  >;
   providers: {
     soniox: {
       configured: boolean;
@@ -82,12 +98,8 @@ interface UsageData {
     };
   };
   pricing: {
-    soniox: {
-      inputTextPerMillion: number;
-      outputAudioPerMillion: number;
-      approximatePerAudioHour: number;
-    };
-    openrouter: { chatModel: string; embeddingModel: string };
+    soniox: { inputTextPerMillion: number; outputAudioPerMillion: number };
+    openrouter: { chatModel: string | null };
   };
 }
 
@@ -102,7 +114,8 @@ const formatMoney = (value: number) => {
 };
 
 const formatNumber = (value: number) => value.toLocaleString();
-const formatDuration = (milliseconds: number) => {
+const formatDuration = (milliseconds: number | null) => {
+  if (milliseconds === null) return '—';
   const minutes = milliseconds / 60_000;
   return minutes < 1 ? `${Math.round(milliseconds / 1000)} sec` : `${minutes.toFixed(1)} min`;
 };
@@ -133,10 +146,17 @@ const LimitBar = ({ value, limit }: { value: number; limit: number }) => (
   </div>
 );
 
+const ExactBadge = ({ exact }: { exact: boolean }) => (
+  <span className={`badge badge-outline ${exact ? 'badge-success' : 'badge-warning'}`}>
+    {exact ? 'Exact' : 'Estimated'}
+  </span>
+);
+
 export default function UsagePage() {
   const router = useRouter();
   const { token } = useAuth();
   const [data, setData] = useState<UsageData | null>(null);
+  const [events, setEvents] = useState<UsageEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -145,8 +165,12 @@ export default function UsagePage() {
     setLoading(true);
     setError('');
     try {
-      const response = await fetchWithAuth('/api/usage', { method: 'GET' });
+      const response = await fetchWithAuth(bukshelfProviderUrl('/api/usage'), { method: 'GET' });
       setData((await response.json()) as UsageData);
+      const eventResponse = await fetchWithAuth(bukshelfProviderUrl('/api/usage/events?limit=15'), {
+        method: 'GET',
+      });
+      setEvents(((await eventResponse.json()) as { events: UsageEvent[] }).events ?? []);
     } catch (refreshError) {
       setError(refreshError instanceof Error ? refreshError.message : 'Unable to load usage');
     } finally {
@@ -157,31 +181,28 @@ export default function UsagePage() {
   useEffect(() => {
     if (!token) return;
     void refresh();
-    const interval = window.setInterval(() => void refresh(), 15_000);
+    const interval = window.setInterval(() => void refresh(), 30_000);
     return () => window.clearInterval(interval);
   }, [refresh, token]);
 
-  const sonioxToday = useMemo(() => {
-    const summary = data?.providers.soniox.summary;
-    if (!summary || summary.days.length === 0) return null;
-    const index = summary.days.length - 1;
-    return {
-      cost: Number(summary.cost_usd[index] ?? 0),
-      requests: summary.num_requests[index] ?? 0,
-      inputTokens: summary.input_text_tokens[index] ?? 0,
-      outputTokens: summary.output_audio_tokens[index] ?? 0,
-      durationMs: summary.output_audio_duration_ms[index] ?? 0,
-    };
-  }, [data]);
-  const openRouterToday = data?.providers.openrouter.key?.usageDaily ?? 0;
-  const totalToday = (sonioxToday?.cost ?? 0) + openRouterToday;
+  // Provider-reported billing is exact; locally recorded units are estimates
+  // unless the provider reported them.
+  const sonioxToday = data?.local.soniox.today;
+  const openRouterToday = data?.local.openrouter.today;
+  const providerCostToday =
+    (data?.providers.openrouter.key?.usageDaily ?? 0) +
+    (sonioxToday && data?.providers.soniox.summary
+      ? Number(data.providers.soniox.summary.cost_usd.at(-1) ?? 0)
+      : 0);
+  const totalToday =
+    providerCostToday || (sonioxToday?.costUsd ?? 0) + (openRouterToday?.costUsd ?? 0);
 
   if (!token) {
     return (
       <main className='bg-base-200 flex min-h-screen items-center justify-center p-6'>
         <section className='bg-base-100 w-full max-w-md rounded-2xl p-8 text-center shadow-sm'>
           <PiPulse className='text-primary mx-auto size-10' />
-          <h1 className='mt-4 text-2xl font-semibold'>Usage & Costs</h1>
+          <h1 className='mt-4 text-2xl font-semibold'>Usage &amp; Costs</h1>
           <p className='text-base-content/60 mt-2'>Sign in to view private provider usage.</p>
           <button
             className='btn btn-primary mt-6'
@@ -207,9 +228,9 @@ export default function UsagePage() {
               <PiArrowLeft className='size-5' />
             </button>
             <div>
-              <h1 className='text-2xl font-semibold sm:text-3xl'>Usage & Costs</h1>
+              <h1 className='text-2xl font-semibold sm:text-3xl'>Usage &amp; Costs</h1>
               <p className='text-base-content/55 mt-0.5 text-sm'>
-                Provider billing + live safeguards
+                Provider billing + persistent local accounting
               </p>
             </div>
           </div>
@@ -232,7 +253,9 @@ export default function UsagePage() {
             <div className='mt-3 text-4xl font-semibold tabular-nums'>
               {data ? formatMoney(totalToday) : '—'}
             </div>
-            <div className='mt-2 text-xs opacity-70'>Exact provider-reported spend</div>
+            <div className='mt-2 text-xs opacity-70'>
+              Provider-reported spend when available, otherwise local estimates
+            </div>
           </div>
           <div className='bg-base-100 rounded-2xl p-5 shadow-sm'>
             <div className='text-base-content/55 text-sm'>OpenRouter this month</div>
@@ -250,7 +273,7 @@ export default function UsagePage() {
                 ? formatMoney(Number(data.providers.soniox.summary.total_cost_usd))
                 : '—'}
             </div>
-            <div className='text-base-content/50 mt-2 text-xs'>TTS v2 only</div>
+            <div className='text-base-content/50 mt-2 text-xs'>TTS v2 only · exact billing</div>
           </div>
         </section>
 
@@ -266,36 +289,44 @@ export default function UsagePage() {
                   <p className='text-base-content/50 text-xs'>tts-rt-v2 · Kayla</p>
                 </div>
               </div>
-              <span className='badge badge-success badge-outline'>Exact billing</span>
+              <ExactBadge exact={false} />
             </div>
 
             {data?.providers.soniox.error && (
               <p className='text-error mb-4 text-sm'>{data.providers.soniox.error}</p>
             )}
             <div className='grid grid-cols-2 gap-x-6 gap-y-5'>
-              <Stat label='Cost today' value={sonioxToday ? formatMoney(sonioxToday.cost) : '—'} />
               <Stat label='Requests today' value={formatNumber(sonioxToday?.requests ?? 0)} />
-              <Stat label='Input text tokens' value={formatNumber(sonioxToday?.inputTokens ?? 0)} />
+              <Stat label='Failures today' value={formatNumber(sonioxToday?.failures ?? 0)} />
               <Stat
-                label='Output audio tokens'
-                value={formatNumber(sonioxToday?.outputTokens ?? 0)}
+                label='Estimated tokens today'
+                value={formatNumber(sonioxToday?.estimatedUnits ?? 0)}
               />
-              <Stat label='Generated audio' value={formatDuration(sonioxToday?.durationMs ?? 0)} />
               <Stat
-                label='Live / queued'
-                value={`${data?.local.soniox.activeRequests ?? 0} / ${data?.local.soniox.queuedRequests ?? 0}`}
+                label='All-time metered tokens'
+                value={formatNumber(data?.local.soniox.allTime.totalUnits ?? 0)}
+              />
+              <Stat
+                label='Session requests'
+                value={formatNumber(data?.local.soniox.session.requests ?? 0)}
+              />
+              <Stat
+                label='Session failures'
+                value={formatNumber(data?.local.soniox.session.failures ?? 0)}
               />
             </div>
             <div className='mt-6'>
               <LimitBar
-                value={data?.local.soniox.dailyEstimatedTokens ?? 0}
-                limit={data?.local.soniox.limits.maxTokensPerDay ?? 1}
+                value={sonioxToday?.totalUnits ?? 0}
+                limit={data?.local.soniox.limits?.tokensPerDay ?? 500_000}
               />
             </div>
 
             {data?.providers.soniox.summary && (
               <div className='mt-6 border-t border-base-300 pt-5'>
-                <div className='text-base-content/55 mb-3 text-xs'>Seven-day cost</div>
+                <div className='text-base-content/55 mb-3 text-xs'>
+                  Seven-day provider-reported cost
+                </div>
                 <div className='flex h-20 items-end gap-2'>
                   {data.providers.soniox.summary.days.map((day, index) => {
                     const costs = data.providers.soniox.summary!.cost_usd.map(Number);
@@ -337,66 +368,119 @@ export default function UsagePage() {
                   </p>
                 </div>
               </div>
-              <span className='badge badge-success badge-outline'>Exact billing</span>
+              <ExactBadge exact={(openRouterToday?.exactUnits ?? 0) > 0} />
             </div>
 
             {data?.providers.openrouter.error && (
               <p className='text-error mb-4 text-sm'>{data.providers.openrouter.error}</p>
             )}
             <div className='grid grid-cols-2 gap-x-6 gap-y-5'>
-              <Stat label='Cost today' value={formatMoney(openRouterToday)} />
               <Stat
-                label='Cost this week'
-                value={formatMoney(data?.providers.openrouter.key?.usageWeekly ?? 0)}
+                label='Input tokens today'
+                value={formatNumber(openRouterToday?.inputUnits ?? 0)}
               />
               <Stat
-                label='Input tokens this process'
-                value={formatNumber(data?.local.openrouter.actualInputTokensToday ?? 0)}
+                label='Output tokens today'
+                value={formatNumber(openRouterToday?.outputUnits ?? 0)}
               />
               <Stat
-                label='Output tokens this process'
-                value={formatNumber(data?.local.openrouter.actualOutputTokensToday ?? 0)}
+                label='Total tokens today'
+                value={formatNumber(openRouterToday?.totalUnits ?? 0)}
               />
+              <Stat label='Requests today' value={formatNumber(openRouterToday?.requests ?? 0)} />
+              <Stat label='Rejected today' value={formatNumber(openRouterToday?.rejected ?? 0)} />
               <Stat
-                label='Requests this process'
-                value={formatNumber(data?.local.openrouter.totalRequestsToday ?? 0)}
-              />
-              <Stat
-                label='Rejected today'
-                value={formatNumber(data?.local.openrouter.rejectedRequestsToday ?? 0)}
+                label='All-time tokens'
+                value={formatNumber(data?.local.openrouter.allTime.totalUnits ?? 0)}
               />
             </div>
             <div className='mt-6'>
               <LimitBar
-                value={
-                  (data?.local.openrouter.actualTotalTokensToday ?? 0) +
-                  (data?.local.openrouter.estimatedInputTokensToday ?? 0)
-                }
-                limit={data?.local.openrouter.limits.tokensPerDay ?? 1}
+                value={openRouterToday?.totalUnits ?? 0}
+                limit={data?.local.openrouter.limits?.tokensPerDay ?? 5_000_000}
               />
             </div>
 
-            <div className='bg-base-200 mt-6 rounded-xl p-4 text-sm'>
-              <div className='text-base-content/55 text-xs'>Embedding model</div>
-              <div className='mt-1 break-all font-medium'>
-                {data?.pricing.openrouter.embeddingModel ?? '—'}
-              </div>
-              {data?.providers.openrouter.key?.limitRemaining != null && (
-                <div className='text-base-content/60 mt-3 text-xs'>
+            {data?.providers.openrouter.key?.limitRemaining != null && (
+              <div className='bg-base-200 mt-6 rounded-xl p-4 text-sm'>
+                <div className='text-base-content/60 text-xs'>
                   {formatMoney(data.providers.openrouter.key.limitRemaining)} remaining on this key
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </section>
         </div>
 
+        <section className='bg-base-100 mt-6 rounded-2xl p-5 shadow-sm sm:p-6'>
+          <h2 className='mb-4 text-lg font-semibold'>Recent requests</h2>
+          <div className='overflow-x-auto'>
+            <table className='table table-sm'>
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Provider</th>
+                  <th>Operation</th>
+                  <th>Status</th>
+                  <th className='text-right'>In / Out</th>
+                  <th className='text-right'>Duration</th>
+                  <th className='text-right'>Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                {events.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className='text-base-content/50 py-6 text-center'>
+                      No provider requests recorded yet.
+                    </td>
+                  </tr>
+                )}
+                {events.map((event) => (
+                  <tr key={event.id}>
+                    <td className='whitespace-nowrap tabular-nums'>
+                      {new Date(event.created_at).toLocaleTimeString()}
+                    </td>
+                    <td>{event.provider}</td>
+                    <td>{event.operation}</td>
+                    <td>
+                      <span
+                        className={`badge badge-sm ${
+                          event.status === 'success'
+                            ? 'badge-success'
+                            : event.status === 'failed'
+                              ? 'badge-error'
+                              : 'badge-warning'
+                        }`}
+                      >
+                        {event.status}
+                      </span>
+                      {event.error_category && (
+                        <span className='text-base-content/50 ml-1 text-xs'>
+                          {event.error_category}
+                        </span>
+                      )}
+                    </td>
+                    <td className='text-right tabular-nums'>
+                      {formatNumber(event.input_units)} / {formatNumber(event.output_units)}
+                      <span className='text-base-content/45 ml-1 text-[10px]'>
+                        [{event.units_exact ? 'exact' : 'est'}]
+                      </span>
+                    </td>
+                    <td className='text-right tabular-nums'>{formatDuration(event.duration_ms)}</td>
+                    <td className='text-right tabular-nums'>
+                      {event.cost_usd === null ? '—' : formatMoney(event.cost_usd)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
         <footer className='text-base-content/50 mt-6 flex flex-col gap-1 px-1 text-xs sm:flex-row sm:justify-between'>
           <div>
-            <div>
-              Soniox rates: ${data?.pricing.soniox.inputTextPerMillion ?? 4}/M text + $
-              {data?.pricing.soniox.outputAudioPerMillion ?? 21.5}/M audio tokens.
-            </div>
-            <div>Local OpenRouter token counters reset when this container restarts.</div>
+            Soniox rates: ${data?.pricing.soniox.inputTextPerMillion ?? 4}/M text + $
+            {data?.pricing.soniox.outputAudioPerMillion ?? 21.5}/M audio tokens. Local token counts
+            are estimates unless marked exact; all accounting persists in SQLite.
           </div>
           <span>
             {data

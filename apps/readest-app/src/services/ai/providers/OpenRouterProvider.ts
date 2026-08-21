@@ -5,7 +5,7 @@ import { aiLogger } from '../logger';
 import { AI_TIMEOUTS } from '../utils/retry';
 import { getAIFetch } from '../utils/httpFetch';
 import { getBrandName, getRuntimeConfig } from '@/services/runtimeConfig';
-import { fetchWithAuth } from '@/utils/fetch';
+import { bukshelfProviderUrl, fetchWithAuth } from '@/utils/fetch';
 
 const DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
 const DEFAULT_MODEL = 'openai/gpt-4o-mini';
@@ -80,7 +80,9 @@ export class OpenRouterProvider implements AIProvider {
   async healthCheck(): Promise<boolean> {
     if (this.serverManaged) {
       try {
-        const response = await fetchWithAuth('/api/ai/chat', { method: 'GET' });
+        const response = await fetchWithAuth(bukshelfProviderUrl('/api/ai/chat'), {
+          method: 'GET',
+        });
         return response.ok;
       } catch {
         return false;

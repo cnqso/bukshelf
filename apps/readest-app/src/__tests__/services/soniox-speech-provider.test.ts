@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const fetchWithAuthMock = vi.hoisted(() => vi.fn());
-vi.mock('@/utils/fetch', () => ({ fetchWithAuth: fetchWithAuthMock }));
-vi.mock('@/services/environment', () => ({ getAPIBaseUrl: () => '/api' }));
+vi.mock('@/utils/fetch', () => ({
+  fetchWithAuth: fetchWithAuthMock,
+  bukshelfProviderUrl: (path: string) => `http://bukshelf.test${path}`,
+}));
 
 import { SonioxSpeechProvider } from '@/services/tts/providers/soniox';
 
@@ -25,7 +27,9 @@ describe('SonioxSpeechProvider', () => {
 
     expect(await provider.init()).toBe(true);
     expect(await provider.getAllVoices()).toEqual([{ id: 'Kayla', name: 'Kayla', lang: 'en' }]);
-    expect(fetchWithAuthMock).toHaveBeenCalledWith('/api/tts/soniox', { method: 'GET' });
+    expect(fetchWithAuthMock).toHaveBeenCalledWith('http://bukshelf.test/api/tts/soniox', {
+      method: 'GET',
+    });
   });
 
   it('returns MP3 bytes and sentence-level timing metadata', async () => {
@@ -41,7 +45,7 @@ describe('SonioxSpeechProvider', () => {
 
     expect(new Uint8Array(result.audio)).toEqual(audio);
     expect(result.boundaries).toEqual([]);
-    expect(fetchWithAuthMock).toHaveBeenCalledWith('/api/tts/soniox', {
+    expect(fetchWithAuthMock).toHaveBeenCalledWith('http://bukshelf.test/api/tts/soniox', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ input: 'Hello from Kayla.', lang: 'en-US', voice: 'Kayla' }),

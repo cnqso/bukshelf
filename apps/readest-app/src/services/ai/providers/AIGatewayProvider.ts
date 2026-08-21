@@ -4,6 +4,12 @@ import type { AIProvider, AISettings, AIProviderName } from '../types';
 import { aiLogger } from '../logger';
 import { GATEWAY_MODELS } from '../constants';
 import { AI_TIMEOUTS } from '../utils/retry';
+import { getAIFetch } from '../utils/httpFetch';
+import { getBukshelfApiBaseUrl } from '@/services/runtimeConfig';
+import { bukshelfProviderUrl } from '@/utils/fetch';
+import { getAccessToken } from '@/utils/access';
+
+const AI_GATEWAY_BASE_URL = 'https://ai-gateway.vercel.sh/v1';
 
 export class AIGatewayProvider implements AIProvider {
   id: AIProviderName = 'ai-gateway';
@@ -41,16 +47,29 @@ export class AIGatewayProvider implements AIProvider {
       const modelId = this.settings.aiGatewayModel || GATEWAY_MODELS.GEMINI_FLASH_LITE;
       aiLogger.provider.init('ai-gateway', `healthCheck starting with model: ${modelId}`);
 
-      const response = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: 'hi' }],
-          apiKey: this.settings.aiGatewayApiKey,
-          model: modelId,
-        }),
-        signal: AbortSignal.timeout(AI_TIMEOUTS.HEALTH_CHECK),
-      });
+      // With Bukshelf configured, chat is proxied through its /api/ai/chat
+      // route; probe that. Otherwise probe the gateway's OpenAI-compatible
+      // models endpoint directly — never the legacy Next.js API routes.
+      const bukshelfBase = getBukshelfApiBaseUrl();
+      const response = bukshelfBase
+        ? await fetch(`${bukshelfProviderUrl('/api/ai/chat')}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${await getAccessToken()}`,
+            },
+            body: JSON.stringify({
+              messages: [{ role: 'user', content: 'hi' }],
+              apiKey: this.settings.aiGatewayApiKey,
+              model: modelId,
+            }),
+            signal: AbortSignal.timeout(AI_TIMEOUTS.HEALTH_CHECK),
+          })
+        : await getAIFetch()(`${AI_GATEWAY_BASE_URL}/models`, {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${this.settings.aiGatewayApiKey}` },
+            signal: AbortSignal.timeout(AI_TIMEOUTS.HEALTH_CHECK),
+          });
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: 'Unknown error' }));

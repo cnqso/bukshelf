@@ -163,6 +163,10 @@ export const handleUsageRoute = async (
       today: config.usage.totals(provider, utcDayStart()),
       session: config.usage.totals(provider, sessionStartedAt),
       allTime: config.usage.totals(provider),
+      limits:
+        provider === 'openrouter'
+          ? (config.openRouter?.limits() ?? null)
+          : (config.soniox?.limits() ?? null),
     });
 
     let providers: unknown;

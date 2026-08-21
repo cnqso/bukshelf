@@ -1,4 +1,20 @@
 import { getAccessToken } from './access';
+import { getBukshelfApiBaseUrl } from '@/services/runtimeConfig';
+
+/**
+ * Server-managed Reader AI, Soniox TTS, and usage metering live in the
+ * Bukshelf Bun backend. There is deliberately no fallback to legacy Next.js
+ * API routes: a missing Bukshelf endpoint is a configuration error.
+ */
+export const bukshelfProviderUrl = (path: string): string => {
+  const base = getBukshelfApiBaseUrl();
+  if (!base) {
+    throw new Error(
+      'Bukshelf API URL is not configured. Set BUKSHELF_API_PUBLIC_URL so the app can reach the AI/TTS backend.',
+    );
+  }
+  return `${base}${path}`;
+};
 
 export const fetchWithTimeout = (url: string, options: RequestInit = {}, timeout = 10000) => {
   const controller = new AbortController();
