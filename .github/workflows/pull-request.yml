@@ -138,6 +138,181 @@ jobs:
         working-directory: apps/readest.koplugin/native/localsend-bin
         run: cargo test
 
+  # Path-filtered like rust_lint: most PRs don't touch Bukshelf, so this
+  # skips Bun setup, the production build, both e2e lanes, and the Docker
+  # build entirely. When they do, this is the only PR-time check that
+  # exercises the actual shipped Docker image — a symlink packaging bug in
+  # apps/bukshelf-server/Dockerfile once returned 200 on every route while
+  # silently failing SSR server-side, invisible to a plain page/status check.
+  bukshelf:
+    runs-on: ubuntu-latest
+    # pull-requests: read lets dorny/paths-filter list a PR's changed files
+    # via the REST API (the top-level grant is contents: read only).
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+
+      - name: detect bukshelf-related changes
+        id: changes
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
+        with:
+          filters: |
+            bukshelf:
+              - 'apps/bukshelf-server/**'
+              - 'apps/readest-app/e2e/bukshelf/**'
+              - 'apps/readest-app/e2e/bukshelf-prod/**'
+              - 'apps/readest-app/playwright.bukshelf*.config.ts'
+              - 'apps/readest-app/next.config.mjs'
+              - 'apps/readest-app/package.json'
+              - 'docker/**'
+              - 'pnpm-lock.yaml'
+              - '.github/workflows/pull-request.yml'
+
+      - name: setup pnpm
+        if: steps.changes.outputs.bukshelf == 'true'
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+
+      - name: setup node
+        if: steps.changes.outputs.bukshelf == 'true'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # apps/bukshelf-server runs on Bun, not Node (see its package.json
+      # engines field); the e2e fixtures below also invoke `bun e2e/.../server.ts`.
+      - name: setup bun
+        if: steps.changes.outputs.bukshelf == 'true'
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.3.1
+
+      - name: install Dependencies
+        if: steps.changes.outputs.bukshelf == 'true'
+        working-directory: apps/readest-app
+        run: |
+          pnpm install --frozen-lockfile --prefer-offline && pnpm setup-vendors
+
+      - name: bukshelf unit tests
+        if: steps.changes.outputs.bukshelf == 'true'
+        working-directory: apps/bukshelf-server
+        run: bun test
+
+      - name: bukshelf typecheck
+        if: steps.changes.outputs.bukshelf == 'true'
+        working-directory: apps/bukshelf-server
+        run: pnpm typecheck
+
+      - name: cache playwright browsers
+        if: steps.changes.outputs.bukshelf == 'true'
+        id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: install playwright browsers
+        if: steps.changes.outputs.bukshelf == 'true'
+        working-directory: apps/readest-app
+        run: |
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = 'true' ]; then
+            npx playwright install-deps chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
+
+      # Fast lane: next dev, resolves modules straight from source.
+      - name: bukshelf e2e (dev build)
+        id: bukshelf_e2e_dev
+        if: steps.changes.outputs.bukshelf == 'true'
+        working-directory: apps/readest-app
+        run: pnpm test:e2e:bukshelf
+
+      # Fidelity lane: the real `output: 'standalone'` production build the
+      # Docker image ships (see BUILD_STANDALONE in next.config.mjs). This is
+      # the only lane that exercises Turbopack's externalized-dependency
+      # packaging, and it asserts on the server process's own
+      # unhandledRejection/uncaughtException output — not just page status or
+      # browser console — since a packaging failure there degrades silently
+      # to client rendering instead of a visible error.
+      - name: bukshelf e2e (production build)
+        id: bukshelf_e2e_prod
+        if: steps.changes.outputs.bukshelf == 'true'
+        working-directory: apps/readest-app
+        run: pnpm test:e2e:bukshelf:prod
+
+      - name: upload bukshelf e2e reports
+        if: |
+          failure() &&
+          (steps.bukshelf_e2e_dev.outcome == 'failure' || steps.bukshelf_e2e_prod.outcome == 'failure')
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-report-bukshelf
+          path: |
+            apps/readest-app/playwright-report-bukshelf/
+            apps/readest-app/playwright-report-bukshelf-prod/
+          retention-days: 7
+
+      - name: Set up Docker Buildx
+        if: steps.changes.outputs.bukshelf == 'true'
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      # Builds and runs the actual image apps/bukshelf-server/Dockerfile
+      # produces — the e2e lanes above assemble the production build directly
+      # via `next build`/bun, not through the Dockerfile's own COPY layout, so
+      # this is the only check that would catch a Dockerfile-specific
+      # assembly mistake (wrong path, missing directory, permissions under
+      # `USER bun`). Cached via the GitHub Actions cache backend (no registry
+      # push, so it works on PRs from forks with no GHCR credentials).
+      - name: build bukshelf Docker image
+        if: steps.changes.outputs.bukshelf == 'true'
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: apps/bukshelf-server/Dockerfile
+          target: runtime
+          tags: bukshelf:pr-ci
+          load: true
+          cache-from: type=gha,scope=bukshelf-pr
+          cache-to: type=gha,mode=max,scope=bukshelf-pr
+
+      - name: smoke-test bukshelf Docker image
+        if: steps.changes.outputs.bukshelf == 'true'
+        run: |
+          set -euo pipefail
+          docker run -d --name bukshelf-pr-ci -p 127.0.0.1:43175:43175 \
+            -e BUKSHELF_AUTH_ENABLED=true \
+            -e SELF_HOSTED_PUBLIC_LIBRARY=true \
+            -e SITE_URL=http://localhost:43175 \
+            -e BUKSHELF_API_PUBLIC_URL=http://localhost:43175 \
+            -e API_BASE_URL=http://localhost:43175 \
+            -e BUKSHELF_SESSION_SECRET=pr-ci-smoke-test-secret-over-32-bytes-long \
+            bukshelf:pr-ci
+          trap 'docker logs bukshelf-pr-ci; docker rm -f bukshelf-pr-ci' EXIT
+
+          for _ in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:43175/health > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:43175/health
+          curl -sf http://127.0.0.1:43175/.well-known/bukshelf
+          for route in / /auth /library /reader; do
+            http_status=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:43175$route")
+            [ "$http_status" = "200" ] || { echo "GET $route -> $http_status"; exit 1; }
+          done
+
+          # The bug this check exists for: Next silently degraded to client
+          # rendering and still returned 200, so only the server's own stderr
+          # showed it.
+          if docker logs bukshelf-pr-ci 2>&1 | grep -qE 'unhandledRejection|Failed to load external module'; then
+            echo "Server-side SSR error detected — see logs above."
+            exit 1
+          fi
+
   build_web_app:
     runs-on: ubuntu-latest
     steps:
