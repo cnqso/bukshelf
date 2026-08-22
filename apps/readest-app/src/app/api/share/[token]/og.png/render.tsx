@@ -1,8 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { NextResponse } from 'next/server';
-import { getDownloadSignedUrl } from '@/utils/object';
-import { rejectionToHttp, resolveActiveShare } from '@/libs/shareServer';
-import { SHARE_PRESIGN_TTL_SECONDS } from '@/services/constants';
+import { fetchShareCover, rejectionToHttp, resolveActiveShare } from '@/libs/shareServer';
 
 // JSX renderer for the OG image. Lives in a non-route `.tsx` so the route
 // file itself can be `.ts` and get filtered out of the Tauri static export
@@ -21,14 +19,11 @@ export const renderShareOgImage = async (token: string): Promise<Response> => {
   const { share } = result;
 
   let coverDataUrl: string | null = null;
-  if (share.coverFileKey) {
+  if (share.hasCover) {
     try {
-      const signedUrl = await getDownloadSignedUrl(share.coverFileKey, SHARE_PRESIGN_TTL_SECONDS);
-      const response = await fetch(signedUrl);
-      if (response.ok) {
-        const buffer = await response.arrayBuffer();
-        const contentType = response.headers.get('content-type') ?? 'image/jpeg';
-        coverDataUrl = `data:${contentType};base64,${arrayBufferToBase64(buffer)}`;
+      const cover = await fetchShareCover(token);
+      if (cover) {
+        coverDataUrl = `data:${cover.contentType};base64,${arrayBufferToBase64(cover.bytes)}`;
       }
     } catch (err) {
       console.error('Share og.png cover fetch failed:', err);

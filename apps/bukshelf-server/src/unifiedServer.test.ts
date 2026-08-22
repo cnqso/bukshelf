@@ -36,10 +36,21 @@ describe('unified Bun + Next server', () => {
       '/api/tts/soniox',
       '/api/usage/events',
       '/api/public/library/covers/123',
+      '/api/share/create',
+      '/api/share/abc123token',
+      '/api/share/abc123token/download',
     ]) {
       expect(isBukshelfPath(path)).toBe(true);
     }
-    for (const path of ['/', '/library', '/api/metadata/search', '/api/tts/edge', '/api/share/x']) {
+    for (const path of [
+      '/',
+      '/library',
+      '/api/metadata/search',
+      '/api/tts/edge',
+      // next/og's ImageResponse renderer has no Bun equivalent, so this one
+      // path under the otherwise Bun-owned /api/share prefix stays with Next.
+      '/api/share/abc123token/og.png',
+    ]) {
       expect(isBukshelfPath(path)).toBe(false);
     }
   });

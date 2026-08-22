@@ -1,7 +1,11 @@
-import { getAPIBaseUrl } from '@/services/environment';
-import { fetchWithAuth } from '@/utils/fetch';
+import { bukshelfProviderUrl, fetchWithAuth } from '@/utils/fetch';
 
-const SHARE_API = getAPIBaseUrl() + '/share';
+// Book sharing lives entirely in the Bun backend (see
+// apps/bukshelf-server/src/shareRoutes.ts) — no fallback to legacy Next.js
+// API routes, matching the AI/TTS/usage migrations. Resolved per-call (not a
+// module-level constant): bukshelfProviderUrl throws if unconfigured, and
+// this module is imported by builds (Tauri, cloud) where that's expected.
+const shareApi = (path = '') => bukshelfProviderUrl(`/api/share${path}`);
 
 export interface CreateShareInput {
   bookHash: string;
@@ -10,7 +14,7 @@ export interface CreateShareInput {
   author?: string | null;
   format: string;
   // Note: `size` is intentionally not part of the input. The server reads the
-  // canonical size from the user's `files` row to avoid client/server drift.
+  // canonical size from the stored book bytes to avoid client/server drift.
   cfi?: string | null;
 }
 
@@ -83,7 +87,7 @@ const jsonHeaders = { 'Content-Type': 'application/json' };
 
 // Owner-only. Creates a share row for an already-uploaded book.
 export const createShare = async (input: CreateShareInput): Promise<CreateShareResponse> => {
-  const response = await fetchWithAuth(`${SHARE_API}/create`, {
+  const response = await fetchWithAuth(shareApi('/create'), {
     method: 'POST',
     headers: jsonHeaders,
     body: JSON.stringify(input),
@@ -94,7 +98,7 @@ export const createShare = async (input: CreateShareInput): Promise<CreateShareR
 
 // Public. Used by the landing page to render metadata.
 export const getShare = async (token: string): Promise<ShareMetadata> => {
-  const response = await fetch(`${SHARE_API}/${encodeURIComponent(token)}`, {
+  const response = await fetch(shareApi(`/${encodeURIComponent(token)}`), {
     method: 'GET',
     cache: 'no-store',
   });
@@ -102,10 +106,9 @@ export const getShare = async (token: string): Promise<ShareMetadata> => {
   return (await response.json()) as ShareMetadata;
 };
 
-// Owner-only. Revokes a share immediately. Note that already-minted presigned
-// download URLs remain valid until their TTL expires (max ~5 min).
+// Owner-only. Revokes a share immediately.
 export const revokeShare = async (token: string): Promise<void> => {
-  const response = await fetchWithAuth(`${SHARE_API}/${encodeURIComponent(token)}/revoke`, {
+  const response = await fetchWithAuth(shareApi(`/${encodeURIComponent(token)}/revoke`), {
     method: 'POST',
   });
   if (!response.ok) throw await parseError(response);
@@ -113,21 +116,17 @@ export const revokeShare = async (token: string): Promise<void> => {
 
 // Owner-only. Paginated list of the caller's shares (active + expired).
 export const listShares = async (cursor?: string | null): Promise<ShareListResponse> => {
-  // SHARE_API is relative in dev (`/api/share`) and absolute in prod, so we
-  // can't use `new URL()` here unconditionally — relative paths throw
-  // "Invalid URL" without a base. Build the query string manually.
   const qs = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
-  const response = await fetchWithAuth(`${SHARE_API}/list${qs}`, { method: 'GET' });
+  const response = await fetchWithAuth(shareApi(`/list${qs}`), { method: 'GET' });
   if (!response.ok) throw await parseError(response);
   return (await response.json()) as ShareListResponse;
 };
 
-// Recipient-side, requires auth. Adds the shared book to the caller's library
-// by R2 server-side byte-copy. Idempotent: if the recipient already owns a
-// non-deleted file with the same book_hash, returns alreadyOwned: true and
-// the existing fileId.
+// Requires auth. Single-owner Bukshelf: the sharer and every authenticated
+// caller are the same owner, so this only ever confirms the shared book is
+// still present locally — there is no cross-account byte-copy to perform.
 export const importShare = async (token: string): Promise<ImportShareResponse> => {
-  const response = await fetchWithAuth(`${SHARE_API}/${encodeURIComponent(token)}/import`, {
+  const response = await fetchWithAuth(shareApi(`/${encodeURIComponent(token)}/import`), {
     method: 'POST',
   });
   if (!response.ok) throw await parseError(response);
@@ -139,7 +138,7 @@ export const importShare = async (token: string): Promise<ImportShareResponse> =
 // the user-visible action does NOT depend on this succeeding.
 export const confirmDownload = async (token: string): Promise<void> => {
   try {
-    await fetch(`${SHARE_API}/${encodeURIComponent(token)}/download/confirm`, {
+    await fetch(shareApi(`/${encodeURIComponent(token)}/download/confirm`), {
       method: 'POST',
       cache: 'no-store',
       keepalive: true,

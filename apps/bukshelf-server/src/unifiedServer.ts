@@ -24,10 +24,15 @@ const exactBukshelfPaths = new Set([
 /** Routes already owned by Bun. Everything else remains with Next temporarily. */
 export const isBukshelfPath = (pathname: string): boolean => {
   const normalized = pathname.replace(/\/+$/, '') || '/';
+  // og.png stays a Next route (next/og's ImageResponse renderer has no Bun
+  // equivalent) even though it lives under the /api/share prefix Bun owns
+  // for everything else.
+  if (normalized.endsWith('/og.png')) return false;
   return (
     exactBukshelfPaths.has(normalized) ||
     normalized.startsWith('/api/auth/') ||
-    normalized.startsWith('/api/public/library/covers/')
+    normalized.startsWith('/api/public/library/covers/') ||
+    normalized.startsWith('/api/share')
   );
 };
 

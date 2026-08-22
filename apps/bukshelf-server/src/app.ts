@@ -3,6 +3,9 @@ import type { AuthService } from './auth';
 import { handleAuthRoute } from './authRoutes';
 import { detectImageType } from './imageType';
 import type { PublicLibraryService } from './publicLibrary';
+import type { ObjectStore } from './objectStore';
+import { handleShareRoute } from './shareRoutes';
+import type { ShareStore } from './shareStore';
 import { handleFileRoute } from './fileRoutes';
 import type { FileStore } from './fileStore';
 import { handleSyncRoute } from './syncRoutes';
@@ -31,6 +34,8 @@ export interface ServerConfig {
   replicas?: ReplicaStore;
   secureCookies?: boolean;
   providers?: ProviderServices;
+  shares?: ShareStore;
+  objects?: ObjectStore;
 }
 
 const CONTENT_TYPES: Record<string, string> = {
@@ -144,6 +149,16 @@ export const createHandler =
         });
         if (providerResponse) return providerResponse;
       }
+
+      if (config.shares && config.objects) {
+        const shareResponse = await handleShareRoute(request, {
+          auth: config.auth,
+          shares: config.shares,
+          objects: config.objects,
+          publicOrigin: config.publicOrigin,
+        });
+        if (shareResponse) return shareResponse;
+      }
     }
 
     if (url.pathname.startsWith('/api/public/library') && request.method === 'OPTIONS') {
@@ -237,6 +252,7 @@ export const createHandler =
           readerAI: Boolean(config.auth && config.providers?.openRouter?.configured),
           textToSpeech: Boolean(config.auth && config.providers?.soniox?.configured),
           usageMetering: Boolean(config.auth && config.providers),
+          sharing: Boolean(config.auth && config.shares && config.objects),
         },
       });
     }

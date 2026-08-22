@@ -1,8 +1,18 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { Suspense } from 'react';
-import { READEST_WEB_BASE_URL, SHARE_BASE_URL } from '@/services/constants';
 import { resolveActiveShare } from '@/libs/shareServer';
 import ShareLanding from './ShareLanding';
+
+// Self-hosted deployments serve /s from their own origin, not
+// web.readest.com — the OG tags must point back at wherever this request
+// actually landed, not a hardcoded cloud domain.
+const requestOrigin = async (): Promise<string> => {
+  const incoming = await headers();
+  const host = incoming.get('host') ?? 'localhost';
+  const proto = incoming.get('x-forwarded-proto')?.split(',')[0]?.trim() ?? 'https';
+  return `${proto}://${host}`;
+};
 
 // Server-rendered metadata for chat unfurls. Lives on the page (not the
 // layout) because Next only passes `searchParams` to page-level
@@ -49,8 +59,9 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
     };
   }
   const { share } = result;
-  const shareUrl = `${SHARE_BASE_URL}/${token}`;
-  const ogImage = `${READEST_WEB_BASE_URL}/api/share/${token}/og.png`;
+  const origin = await requestOrigin();
+  const shareUrl = `${origin}/s/${token}`;
+  const ogImage = `${origin}/api/share/${token}/og.png`;
 
   return {
     title: `${share.bookTitle} · Shared via Readest`,

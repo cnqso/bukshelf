@@ -10,6 +10,7 @@ import { ReplicaStore } from './replicaStore';
 import { UsageStore } from './usageStore';
 import { OpenRouterService, createOpenRouterConfigFromEnv } from './openRouter';
 import { SonioxService, createSonioxConfigFromEnv } from './soniox';
+import { ShareStore } from './shareStore';
 import { resolve } from 'node:path';
 import { startUnifiedServer } from './unifiedServer';
 
@@ -37,6 +38,7 @@ await files?.init();
 const sync = authStore ? new SyncStore(authStore.database) : undefined;
 const replicas = authStore ? new ReplicaStore(authStore.database) : undefined;
 const usage = authStore ? new UsageStore(authStore.database) : undefined;
+const shares = authStore ? new ShareStore(authStore.database) : undefined;
 const openRouter =
   authStore && usage ? new OpenRouterService(createOpenRouterConfigFromEnv(), usage) : undefined;
 const soniox =
@@ -63,6 +65,8 @@ const handler = createHandler({
   replicas,
   secureCookies,
   providers: usage ? { usage, openRouter, soniox } : undefined,
+  shares,
+  objects: objectStore,
   publicLibrary:
     publicLibraryEnabled && objectStore && sync
       ? createLocalPublicLibrary(sync, objectStore)
