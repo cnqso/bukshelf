@@ -1,25 +1,21 @@
 # Self-Hosting with Docker/Podman with Compose
 
+Bukshelf is one Bun process, SQLite, and a filesystem data directory — no
+database or object-storage container required. `docker compose up` starts
+this and nothing else. See [`BUKSHELF_0.1.md`](../BUKSHELF_0.1.md) for the
+full architecture.
+
 ## Stack
 
-| service         | Image                       | Description                                       |
-| --------------- | --------------------------- | ------------------------------------------------- |
-| **client**      | `ghcr.io/readest/readest`   | readest frontend                                  |
-| **db**          | `supabase/postgres`         | psql db with supabase extensions                  |
-| **kong**        | `kong:2.8.1`                | api gateway routing requests to supabase services |
-| **auth**        | `supabase/gotrue:v2.185.0`  | auth service (email, JWT)                         |
-| **rest**        | `postgrest/postgrest:v14.3` | psql rest api                                     |
-| **minio**       | `minio/minio`               | s3 storage                                        |
-| **minio-setup** | `minio/mc`                  | helper container to create s3 buckets             |
+| service      | Image                       | Description                          |
+| ------------ | ---------------------------- | ------------------------------------- |
+| **bukshelf** | built from `apps/bukshelf-server/Dockerfile` | frontend + API + SQLite + book storage |
 
 ### Exposed ports
 
-| Default port | Service          | Variable             |
-| ------------ | ---------------- | -------------------- |
-| `43171`      | Readest client   | `READEST_HTTP_PORT`  |
-| `43172`      | kong API gateway | `KONG_HTTP_PORT`     |
-| `43173`      | MinIO S3 API     | `MINIO_API_PORT`     |
-| `43174`      | MinIO console UI | `MINIO_CONSOLE_PORT` |
+| Default port | Service  | Variable            |
+| ------------- | -------- | -------------------- |
+| `43175`       | Bukshelf | `BUKSHELF_HOST_PORT` |
 
 ---
 
@@ -28,58 +24,38 @@
 ### 1. setup .env
 
 ```bash
-cp docker/.env.example docker/.env
+cd docker
+cp .env.example .env
 ```
 
 update `docker/.env`:
 
-- update `POSTGRES_PASSWORD` to a strong password (32+ chars)
-- update `JWT_SECRET` to a random secret (32+ chars)
-- regenerate `ANON_KEY` and `SERVICE_ROLE_KEY` as HS256 JWTs signed with your `JWT_SECRET` (use [jwt.io](https://jwt.io/) or a similar tool):
-  - `ANON_KEY` payload: `{"role": "anon"}`
-  - `SERVICE_ROLE_KEY` payload: `{"role": "service_role"}`
-- set `MINIO_ROOT_PASSWORD` to a strong password
+- set `BUKSHELF_SESSION_SECRET` to a strong random secret (32+ chars)
+- optionally set `OPENROUTER_API_KEY` / `SONIOX_API_KEY` for Reader AI / TTS
 
-### 2. Start the Stack (pull prebuilt client image)
-
-run from the `docker/` directory:
+### 2. Start the stack
 
 ```bash
 cd docker
 docker compose up -d
 ```
 
-this pulls `${READEST_IMAGE}` (default: `ghcr.io/readest/readest:latest`) instead of building the client locally.
-the web client now reads `SUPABASE_PUBLIC_URL`, `SUPABASE_ANON_KEY`, `API_BASE_URL`, `OBJECT_STORAGE_TYPE`, `STORAGE_FIXED_QUOTA`, `TRANSLATION_FIXED_QUOTA`, `SELF_HOSTED_PREMIUM_FEATURES`, `SELF_HOSTED_PRIVACY_MODE`, white-label/public-library settings, and safe Reader AI model metadata from runtime
-container env, so custom self-hosted values work with pulled images.
+this builds the image locally from `apps/bukshelf-server/Dockerfile`.
 
-set `SELF_HOSTED_PRIVACY_MODE=true` to prevent PostHog from initializing. To
-enable Reader AI without exposing a credential to the browser, set
-`OPENROUTER_API_KEY`; long-context chat requests then pass through an authenticated
-server route. The browser extracts literal chapter text locally—there is no
-embedding or retrieval service. The default guardrails are 900,000 input
-characters per request, 2 concurrent requests, 30 requests per minute, 5,000,000
-tokens per UTC day, and 2,048 output tokens per response.
-Signed-in users can open **Advanced Settings → Usage & Costs** to compare the
-live local safety meters with exact Soniox and OpenRouter provider billing.
+> **Prerequisites for local builds**: the `packages/foliate-js` and
+> `packages/simplecc-wasm` git submodules must be initialized:
+> ```bash
+> git submodule update --init packages/foliate-js packages/simplecc-wasm
+> ```
+> In GitHub Codespaces this is done automatically via
+> `.devcontainer/devcontainer.json`.
 
-For a single-owner white-label deployment, set `SELF_HOSTED_BRAND_NAME`; the
-owner supplies their email during first-run setup. Setting
-`SELF_HOSTED_PUBLIC_LIBRARY=true` replaces the signed-out home screen with a
-read-only catalog for that account. Its API
-returns only a synthetic ID, title, author, and same-origin cover URL; cover
-bytes are proxied so storage keys and the owner's user ID are not disclosed.
-Set `SELF_HOSTED_SOURCE_URL` to the public source for the exact modified build
-when making an AGPL-covered deployment available over a network.
-
-if you prefer Docker Hub, set `READEST_IMAGE` in `docker/.env`, for example:
+To pull a published image instead of building locally, set `BUKSHELF_IMAGE`
+in `docker/.env`:
 
 ```env
-READEST_IMAGE=docker.io/your-dockerhub-username/readest:latest
+BUKSHELF_IMAGE=ghcr.io/readest/bukshelf:latest
 ```
-
-replace `your-dockerhub-username` with the Docker Hub namespace that publishes your `readest` image.
-for official images, use the namespace configured for this repository's Docker Hub publishing secrets.
 
 published tags:
 - `latest`: rolling image from the default branch and from release events
@@ -87,69 +63,40 @@ published tags:
 - `main`: rolling image from the default branch
 - `sha-<commit>`: immutable commit tag
 
-### Build locally instead of pulling
+### 3. First-run setup
 
-> **Prerequisites for local builds**: the `packages/foliate-js` and `packages/simplecc-wasm` git submodules must be initialized before building:
-> ```bash
-> git submodule update --init packages/foliate-js packages/simplecc-wasm
-> ```
-> In GitHub Codespaces this is done automatically via `.devcontainer/devcontainer.json`.
+Open `http://localhost:43175` and follow the setup flow to create the single
+owner account — see [`BUKSHELF_0.1.md`](../BUKSHELF_0.1.md#owner-commands)
+for the CLI equivalent and password-reset commands.
 
-```bash
-cd docker
-docker compose -f compose.yaml -f compose.build.yaml up --build -d
-```
+set `SELF_HOSTED_PRIVACY_MODE=true` to prevent PostHog from initializing. To
+enable Reader AI without exposing a credential to the browser, set
+`OPENROUTER_API_KEY`; long-context chat requests then pass through an
+authenticated Bun route. The browser extracts literal chapter text
+locally — there is no embedding or retrieval service. The default guardrails
+are 900,000 input characters per request, 2 concurrent requests, 30 requests
+per minute, 5,000,000 tokens per UTC day, and 2,048 output tokens per
+response. Signed-in users can open **Advanced Settings → Usage & Costs** to
+compare the live local safety meters with exact Soniox and OpenRouter
+provider billing.
 
-### 3. Access
+For a single-owner white-label deployment, set `SELF_HOSTED_BRAND_NAME`; the
+owner supplies their email during first-run setup. Setting
+`SELF_HOSTED_PUBLIC_LIBRARY=true` replaces the signed-out home screen with a
+read-only catalog for that account. Its API returns only a synthetic ID,
+title, author, and same-origin cover URL; cover bytes are proxied so book
+hashes and file paths are not disclosed. Set `SELF_HOSTED_SOURCE_URL` to the
+public source for the exact modified build when making an AGPL-covered
+deployment available over a network.
 
-- Readest app: `http://localhost:43171`
-- MinIO console: `http://localhost:43174` (login with `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`)
-
-### Upgrading an existing deployment
-
-pulling a newer client image does not touch the database volume, and the first-boot
-hook only runs when that volume is empty. so after an upgrade, apply any new
-migrations yourself:
-
-```bash
-cd docker
-docker compose pull
-docker compose up -d
-docker compose exec db /docker-entrypoint-initdb.d/zz-readest-migrations.sh
-```
-
-the script records what it applied in `readest_meta.migrations` and skips those
-next time, so it is safe to repeat after every upgrade.
-
-if you had previously patched your database by hand, the script may stop on an
-`already exists` error. record that file as applied and run it again:
-
-```bash
-docker compose exec db psql -U supabase_admin -c \
-  "INSERT INTO readest_meta.migrations (name) VALUES ('002_add_book_shares.sql') ON CONFLICT DO NOTHING"
-```
-
-### Hot Reload (development)
-
-> **Prerequisites**: submodules must be initialized (see above).
-
-to develop using the compose stack, use `compose.dev.yaml` which sets the build target to `development-stage` (Next.js dev server) and mounts your local repo for hot reload:
-
-```bash
-cd docker
-docker compose -f compose.yaml -f compose.dev.yaml up --build -d
-```
-
-the first mount overlays your local repo into the container. the remaining anonymous volumes shadow the directories that were pre-built inside the image, so the container's installed deps and vendor assets are used instead of what's on your host.
-
-### Stop the Stack
+### Stop the stack
 
 ```bash
 cd docker
 docker compose down
 ```
 
-to also remove volumes (database and storage data):
+to also remove the data volume (SQLite database, books, covers, backups):
 
 ```bash
 cd docker
@@ -158,7 +105,52 @@ docker compose down -v
 
 ---
 
-## Database schema
+## Migrating from a pre-Bukshelf install
+
+If you have an existing Readest self-hosted deployment (Supabase/Postgres +
+MinIO, from before this migration), bring that stack back up temporarily,
+pointed at its **original data volumes**, and run the one-time importers
+against it. The importers talk directly to Postgres and MinIO — the legacy
+web client does not need to be reachable or correctly configured for this.
+
+```bash
+cd docker
+# Uses your existing data volumes: run this from the same directory (and
+# with the same project name) your old deployment used, so Compose finds them.
+docker compose -f compose.legacy-migration.yaml up -d db minio
+```
+
+Then, from the repository root, with `docker/.env` pointing `POSTGRES_*` /
+`MINIO_*` at that stack (the defaults in `.env.example` already match it):
+
+```bash
+# Imports books, covers, classic sync metadata (configs/notes/reading
+# stats), and CRDT replicas for one account. Safe to re-run.
+pnpm import:bukshelf --owner-email owner@example.com
+
+# Imports the owner's password hash directly (no plaintext copy) so the
+# same password keeps working.
+pnpm --dir apps/bukshelf-server auth:import-legacy --email owner@example.com
+```
+
+Once both commands report success, start Bukshelf (`docker compose up -d`
+from `docker/`, no `-f` flag needed) and confirm your library, settings, and
+login all carried over. Then tear down the legacy stack for good:
+
+```bash
+cd docker
+docker compose -f compose.legacy-migration.yaml down -v
+```
+
+`compose.legacy-migration.yaml`, `compose.build.yaml`, and `compose.dev.yaml`
+are the full pre-Bukshelf stack (Supabase Postgres, Kong, GoTrue, PostgREST,
+MinIO, and the legacy Next-only client) — see
+[Database schema](#database-schema) below if you're inspecting or manually
+patching that database during a migration. None of this runs by default.
+
+---
+
+## Database schema (legacy stack only)
 
 | path                          | role                                                                       |
 | ----------------------------- | -------------------------------------------------------------------------- |
@@ -176,33 +168,16 @@ migrations directory, so adding a migration file needs no compose change.
 
 ## Serving from a custom domain
 
-the browser talks to three of these services directly, so each needs a URL that
-resolves from outside the docker network:
-
-| variable              | what the browser uses it for                                   |
-| --------------------- | -------------------------------------------------------------- |
-| `SITE_URL`            | the readest client itself                                        |
-| `SUPABASE_PUBLIC_URL` | kong, which routes `/auth/v1/…` and `/rest/v1/…`                 |
-| `S3_PUBLIC_ENDPOINT`  | minio, reached through path-style presigned URLs                 |
-
-`SUPABASE_PUBLIC_URL` and `S3_PUBLIC_ENDPOINT` default to `http://${HOST_IP}:<port>`,
-which suits a plain IP/port deployment; set them in `docker/.env` to override that.
-putting everything on one origin also means no cross-origin requests at all:
-
 ```env
-HOST_IP=your-domain.com
 SITE_URL=https://your-domain.com
-API_EXTERNAL_URL=https://your-domain.com
-ADDITIONAL_REDIRECT_URLS=https://your-domain.com/**
-SUPABASE_PUBLIC_URL=https://your-domain.com
-S3_PUBLIC_ENDPOINT=https://your-domain.com
+API_BASE_URL=https://your-domain.com
+BUKSHELF_API_PUBLIC_URL=https://your-domain.com
+BUKSHELF_SECURE_COOKIES=true
 ```
 
-`nginx.conf.example` is a working starting point for terminating TLS in front of
-the stack. two things it gets right that are easy to miss: the `Host` header has
-to reach minio unchanged or the presigned signatures will not verify, and the
-request body limit has to be lifted on the bucket location or large book uploads
-are truncated.
+Putting everything on one origin means no cross-origin requests at all.
+`nginx.conf.example` is a working starting point for terminating TLS in
+front of the stack.
 
 ### CJK fonts on a custom domain
 
@@ -225,8 +200,7 @@ Set `SONIOX_API_KEY` to enable the server-side Soniox provider. Readest uses
 `tts-rt-v2` with the Kayla voice and never sends the API key to the browser.
 Each request emits a structured JSON log containing its request/user IDs,
 language, character count, estimated tokens, latency, status, audio bytes, and
-cumulative usage; the synthesized book text is not logged. The compose setup
-rotates client logs after five 20 MB files.
+cumulative usage; the synthesized book text is not logged.
 
 The defaults allow two concurrent upstream requests with 32 waiting requests,
 90 requests per minute, 20,000 estimated tokens per user per minute, and
@@ -237,37 +211,25 @@ Override them with `SONIOX_TTS_MAX_CONCURRENT`, `SONIOX_TTS_MAX_QUEUE_SIZE`,
 
 ---
 
-## Building the Dockerfile standalone
+## Building the Bukshelf image standalone
 
 ```bash
 docker build \
-  --target production-stage \
-  --build-arg NEXT_PUBLIC_APP_PLATFORM=web \
-  -t readest-client \
+  -f apps/bukshelf-server/Dockerfile \
+  -t bukshelf \
   .
 ```
 
 run the built image:
 
 ```bash
-docker run -p 3000:3000 \
-  -e SUPABASE_URL=http://host.docker.internal:8000 \
-  -e SUPABASE_PUBLIC_URL=http://localhost:8000 \
-  -e SUPABASE_ANON_KEY=<anon-key> \
-  -e SUPABASE_ADMIN_KEY=<service-role-key> \
-  -e API_BASE_URL=http://localhost:3000 \
-  -e OBJECT_STORAGE_TYPE=s3 \
-  -e S3_ENDPOINT=http://host.docker.internal:9000 \
-  -e S3_PUBLIC_ENDPOINT=http://localhost:9000 \
-  -e S3_REGION=us-east-1 \
-  -e S3_BUCKET_NAME=readest-files \
-  -e S3_ACCESS_KEY_ID=<minio-user> \
-  -e S3_SECRET_ACCESS_KEY=<minio-password> \
-  -e STORAGE_FIXED_QUOTA=1073741824 \
-  -e TRANSLATION_FIXED_QUOTA=50000 \
-  readest-client
+docker run -p 43175:43175 \
+  -v bukshelf-data:/data \
+  -e BUKSHELF_AUTH_ENABLED=true \
+  -e SELF_HOSTED_PUBLIC_LIBRARY=true \
+  -e SITE_URL=http://localhost:43175 \
+  -e BUKSHELF_API_PUBLIC_URL=http://localhost:43175 \
+  -e API_BASE_URL=http://localhost:43175 \
+  -e BUKSHELF_SESSION_SECRET=<a-strong-32-plus-char-secret> \
+  bukshelf
 ```
-
-on Linux, some Docker setups do not resolve `host.docker.internal` by default.
-in that case, either replace it with your host IP or run with:
-`--add-host=host.docker.internal:host-gateway`.

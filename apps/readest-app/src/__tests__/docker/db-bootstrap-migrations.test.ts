@@ -22,7 +22,11 @@ const DOCKER_DIR = resolve(process.cwd(), '../../docker');
 const MIGRATIONS_DIR = resolve(DOCKER_DIR, 'volumes/db/migrations');
 const INITDB_DIR = '/docker-entrypoint-initdb.d';
 
-const compose = readFileSync(resolve(DOCKER_DIR, 'compose.yaml'), 'utf-8');
+// The Supabase/Postgres stack this guards is no longer the default
+// (docker/compose.yaml is now the Bukshelf-only stack); it lives in
+// compose.legacy-migration.yaml, brought up only to run the one-time
+// importers against a pre-Bukshelf deployment. See docker/README.md.
+const compose = readFileSync(resolve(DOCKER_DIR, 'compose.legacy-migration.yaml'), 'utf-8');
 
 /** `- ./volumes/db/roles.sql:/docker-entrypoint-initdb.d/...:Z` → [source, target]. */
 const dbServiceMounts = (): { source: string; target: string }[] => {

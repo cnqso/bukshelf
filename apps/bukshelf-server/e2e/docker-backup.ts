@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dir, '../../..');
-const composeFile = resolve(root, 'docker/compose.bukshelf.yaml');
+const composeFile = resolve(root, 'docker/compose.yaml');
 const suffix = randomBytes(5).toString('hex');
 const project = `bukshelf-e2e-${suffix}`;
 const image = `bukshelf-e2e:${suffix}`;
