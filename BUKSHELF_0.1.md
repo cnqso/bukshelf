@@ -81,7 +81,23 @@ browser/native smoke test appropriate to the changed behavior.
 
 ## Current State
 
-- The existing Docker/Supabase/MinIO stack runs locally on uncommon ports.
+- Postgres and MinIO are no longer part of the default runtime or its
+  Compose stack. `docker compose up` (docker/compose.yaml) starts only the
+  Bukshelf image: one process, SQLite, and a filesystem data directory. The
+  legacy Supabase/Postgres/MinIO/Kong stack survives only as
+  `docker/compose.legacy-migration.yaml`, brought up temporarily so the
+  one-time importers (`pnpm import:bukshelf`, `auth:import-legacy`) can read
+  an existing pre-Bukshelf deployment's data; it is not started by default
+  and the importers never require its `client`/`auth` services to be
+  reachable, only `db` and `minio`.
+- Book sharing (create/list/revoke/cover/download/download-confirm/import)
+  moved from Postgres (`book_shares`) + MinIO presigned URLs to
+  `bukshelf.sqlite` + the existing filesystem object store. Single-owner
+  simplifies the model considerably: no `user_id`/RLS, and cover/download
+  bytes are served directly (no presigning — the API and the bytes are the
+  same host now). The `/s/[token]` landing page and its OG image stay
+  Next.js routes (next/og has no Bun equivalent) but now read share state
+  through Bun's public endpoints over loopback instead of Supabase.
 - The web frontend is branded Bukshelf and exposes a safe public bookshelf.
 - Soniox TTS, OpenRouter Reader AI, and provider usage metering are working.
 - Reader AI is deliberately long-context rather than retrieval-augmented: the
@@ -152,17 +168,21 @@ browser/native smoke test appropriate to the changed behavior.
   require the server to be stopped, and restore requires an explicit force flag.
 - A minimal production Bun image and Compose service persist the whole server in
   one `/data` volume; no database or object-storage container is required.
+- The production image build now uses Next's `output: 'standalone'` tracer
+  (`BUILD_STANDALONE`, next.config.mjs) instead of copying `.next` next to a
+  flattened `pnpm deploy` tree. The prior approach shipped Turbopack's
+  externalized-dependency symlinks pointing at a pnpm store the runtime image
+  never had, so SSR of any page touching one of those packages failed at
+  request time while still returning 200 (Next degraded silently to client
+  rendering). The image also dropped from 2.94GB to 1.04GB as a result, since
+  the traced tree replaces the full frontend `node_modules`.
 
 ## Development Runtime
 
 | Purpose | Address |
 | --- | --- |
-| Legacy Next.js web app | `http://localhost:43171` |
-| Legacy Supabase gateway | `http://localhost:43172` |
-| Legacy MinIO API | `http://localhost:43173` |
-| Legacy MinIO console | `http://localhost:43174` |
-| Bun migration server | `http://localhost:43175` |
-| Legacy Postgres bridge (migration only) | `localhost:43176` |
+| Bukshelf | `http://localhost:43175` |
+| Legacy stack (migration only, `compose.legacy-migration.yaml`) | ports `43171`-`43176`, see docker/README.md |
 
 Run the Bun server from the repository root with `pnpm dev:bukshelf`. Use
 `pnpm dev:bukshelf:fresh` to erase the repository-local Bukshelf development
@@ -191,10 +211,22 @@ that have actually migrated.
   and live catalog/cover requests pass.
 - `pnpm test:docker:bukshelf` proves fresh-volume setup, cold start, HTTP writes,
   stopped-server backup, destructive mutation, restore into a new container,
-  and recovery of authentication, SQLite metadata, and book bytes.
+  and recovery of authentication, SQLite metadata, and book bytes — run
+  against the restructured `docker/compose.yaml` (Bukshelf-only, Postgres/
+  MinIO no longer present) after the sharing migration, unchanged result.
+- Share HTTP-contract tests cover create/list/revoke/cover/download/confirm/
+  import, the active-share cap, expiry/revocation/source-deletion rejection,
+  and idempotent revoke.
 - The signed-out page renders the real SQLite catalog through Bun with no
   browser console errors. Runtime configuration points authenticated library,
   file, classic sync, replica sync, and replica-key traffic directly at Bun.
+- `pnpm test:e2e:bukshelf` (dev mode, fast) and `pnpm test:e2e:bukshelf:prod`
+  (real `output: 'standalone'` build) are separate lanes. `next dev` never
+  exercises Turbopack's externalized-dependency packaging, so only the prod
+  lane can catch a bug like the one above; it asserts on the server process's
+  own `unhandledRejection`/`uncaughtException` output, not just page/browser
+  state, since a packaging failure there doesn't surface as a bad HTTP status
+  or a console error.
 
 ## Owner Commands
 
@@ -217,8 +249,9 @@ permanently closes after that account is created.
 
 ## Next Step
 
-Audit the remaining Next.js routes (translation providers, sharing, payments,
-metadata search, OPDS proxying, Hardcover, Edge TTS, KOReader sync, send-to-
-reader) and choose between migrating, retaining, or deleting each one. After
-that, produce the static web bundle served by Bun and remove the legacy
-Supabase/Postgres/MinIO services from the default runtime entirely.
+Stripe is removed (routes, libs, UI, npm deps); IAP (Apple/Google) is kept as
+the only purchase path. Neither was ever provisioned in the self-hosted
+schema, so this was a deletion, not a migration. The remaining Next.js
+routes with no Postgres/MinIO coupling at all (translation providers,
+metadata search, OPDS proxying, Hardcover, Edge TTS) are a straightforward
+port into Bun whenever picked up, not a data migration.
