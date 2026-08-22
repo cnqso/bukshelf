@@ -46,7 +46,6 @@ flowchart LR
     subgraph Cloud["External services"]
         Supabase["Supabase<br/>(auth + Postgres)"]
         S3["Object storage<br/>(S3 / R2)"]
-        Stripe["Stripe<br/>(billing)"]
         AI["AI providers<br/>(OpenAI / Ollama / ...)"]
         Trans["Translators<br/>(DeepL / Google / Azure / Yandex)"]
         Meta["Metadata providers<br/>(Google Books / Open Library)"]
@@ -68,7 +67,6 @@ flowchart LR
     PagesApi --> S3
     PagesApi --> Trans
     AppApi --> Supabase
-    AppApi --> Stripe
     AppApi --> AI
     AppApi --> Meta
     AppApi --> OPDS
@@ -338,11 +336,6 @@ metadata/search          -> metadata lookup (Google Books / Open Library)
 opds/proxy               -> CORS-friendly OPDS proxy
 tts/edge                 -> Edge TTS streaming
 hardcover/graphql        -> Hardcover GraphQL relay
-stripe/checkout          -> create checkout session
-stripe/portal            -> billing portal redirect
-stripe/plans             -> plan listing
-stripe/check             -> subscription state
-stripe/webhook           -> Stripe webhook handler
 google/iap-verify        -> Google Play IAP verification
 apple/iap-verify         -> App Store IAP verification
 share/*                  -> share-link landing + read-only render

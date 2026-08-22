@@ -1,16 +1,14 @@
 'use client';
-import Stripe from 'stripe';
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useTranslation } from '@/hooks/useTranslation';
-import { getAPIBaseUrl, getNodeAPIBaseUrl } from '@/services/environment';
+import { getNodeAPIBaseUrl } from '@/services/environment';
 import { getAccessToken } from '@/utils/access';
 import { PlanType } from '@/types/quota';
 import { VerifiedIAP } from '@/libs/payment/iap/types';
 import Spinner from '@/components/Spinner';
 
-const STRIPE_CHECK_URL = `${getAPIBaseUrl()}/stripe/check`;
 const APPLE_IAP_VERIFY_URL = `${getNodeAPIBaseUrl()}/apple/iap-verify`;
 const ANDROID_IAP_VERIFY_URL = `${getNodeAPIBaseUrl()}/google/iap-verify`;
 
@@ -51,48 +49,6 @@ const SuccessPageWithSearchParams = () => {
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-
-  const updateStripeSessionStatus = async () => {
-    try {
-      const token = await getAccessToken();
-      const response = await fetch(STRIPE_CHECK_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ sessionId }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const { session: stripeCheckoutSession, error } = await response.json();
-
-      if (error) {
-        setSessionStatus((prev) => ({ ...prev, status: 'failed' }));
-        console.error('Session check error:', error);
-        return;
-      }
-
-      const session = stripeCheckoutSession as Stripe.Checkout.Session;
-      setSessionStatus({
-        status: session.payment_status === 'paid' ? 'completed' : 'failed',
-        customerEmail: session.customer_email || session.customer_details?.email || '',
-        orderId: (session.subscription || session.payment_intent || '') as string,
-        planName: session.line_items?.data?.[0]?.description || '',
-        planType: session.mode === 'payment' ? 'purchase' : 'subscription',
-        amount: session.amount_total || undefined,
-        currency: session.currency || undefined,
-      });
-
-      refresh();
-    } catch (error) {
-      console.error('Failed to fetch session status:', error);
-      setSessionStatus((prev) => ({ ...prev, status: 'failed' }));
-    }
-  };
 
   const updateIOSIAPSessionStatus = async (
     transactionId: string,
@@ -214,9 +170,7 @@ const SuccessPageWithSearchParams = () => {
   };
 
   const updateSessionStatus = async () => {
-    if (payment === 'stripe' && sessionId) {
-      await updateStripeSessionStatus();
-    } else if (payment === 'iap') {
+    if (payment === 'iap') {
       await updateIAPSessionStatus();
     } else {
       setSessionStatus((prev) => ({ ...prev, status: 'failed' }));

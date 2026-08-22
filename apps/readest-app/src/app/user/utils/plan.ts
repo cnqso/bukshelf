@@ -1,4 +1,3 @@
-import type { StripeAvailablePlan } from '@/libs/payment/stripe/client';
 import type { AvailablePlan, PlanInterval, PlanType, QuotaFeature, UserPlan } from '@/types/quota';
 import { stubTranslation as _ } from '@/utils/misc';
 
@@ -44,7 +43,7 @@ const getProductFeature = (productId: string): QuotaFeature | undefined => {
 
 export function getPlanDetails(
   planCode: UserPlan,
-  availablePlans: (AvailablePlan & StripeAvailablePlan)[],
+  availablePlans: (AvailablePlan & { metadata?: { feature?: QuotaFeature } })[],
   interval: PlanInterval = 'month',
 ): PlanDetails {
   const availablePlan = availablePlans.find(

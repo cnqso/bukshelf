@@ -1,14 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { getPlanDetails } from '@/app/user/utils/plan';
 import { AvailablePlan, UserPlan, PlanInterval, QuotaFeature } from '@/types/quota';
-import { StripeProductMetadata } from '@/types/payment';
 
-// getPlanDetails expects (AvailablePlan & StripeAvailablePlan)[].
-// StripeAvailablePlan = AvailablePlan & { metadata?: StripeProductMetadata; product?: Stripe.Product }
+// getPlanDetails expects (AvailablePlan & { metadata?: { feature?: QuotaFeature } })[].
 // We build the exact shape needed to satisfy the type.
 
 type TestPlan = AvailablePlan & {
-  metadata?: StripeProductMetadata;
+  metadata?: { feature?: QuotaFeature };
 };
 
 function makePlan(overrides: Partial<TestPlan> = {}): TestPlan {
@@ -233,7 +231,7 @@ describe('getPlanDetails', () => {
           productId: 'prod_xyz',
           price: 1000,
           productName: 'XYZ',
-          metadata: { plan: 'purchase', feature: 'storage' as QuotaFeature },
+          metadata: { feature: 'storage' as QuotaFeature },
         }),
       ];
       const result = getPlanDetails('purchase', plans);
