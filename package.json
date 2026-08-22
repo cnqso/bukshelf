@@ -15,7 +15,6 @@
     "test:e2e:bukshelf": "pnpm --dir apps/readest-app test:e2e:bukshelf",
     "test:e2e:bukshelf:prod": "pnpm --dir apps/readest-app test:e2e:bukshelf:prod",
     "test:docker:bukshelf": "bun --cwd apps/bukshelf-server test:docker",
-    "import:bukshelf": "bun --cwd apps/bukshelf-server import",
     "backup:bukshelf": "bun --cwd apps/bukshelf-server backup",
     "prepare": "husky",
     "fmt:check": "pnpm --filter @readest/readest-app fmt:check",

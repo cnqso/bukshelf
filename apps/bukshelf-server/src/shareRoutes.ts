@@ -87,7 +87,7 @@ const REJECTION_MESSAGE: Record<ShareRejection, string> = {
 
 /**
  * Resolves a token to an active share plus a live confirmation that the
- * underlying book bytes still exist. Unlike the legacy Postgres/MinIO path,
+ * underlying book bytes still exist. Unlike the old hosted path,
  * there's no separate `files` table to join — the object store IS the source
  * of truth for whether the book is still there.
  */

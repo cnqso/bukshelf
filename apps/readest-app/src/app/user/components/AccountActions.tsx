@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useEnv } from '@/context/EnvContext';
 import { useTranslation } from '@/hooks/useTranslation';
 
 interface DeleteConfirmationModalProps {
@@ -45,42 +44,24 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
 };
 
 interface AccountActionsProps {
-  iapAvailable: boolean;
   onLogout: () => void;
-  onResetPassword: () => void;
-  onUpdateEmail: () => void;
-  onConfirmDelete: () => void;
   onConfirmDeleteAllBooks: () => void;
-  onRestorePurchase?: () => void;
   onManageStorage?: () => void;
   onManageSharedLinks?: () => void;
   onManageSync?: () => void;
 }
 
 const AccountActions: React.FC<AccountActionsProps> = ({
-  iapAvailable,
   onLogout,
-  onResetPassword,
-  onUpdateEmail,
-  onConfirmDelete,
   onConfirmDeleteAllBooks,
-  onRestorePurchase,
   onManageStorage,
   onManageSharedLinks,
   onManageSync,
 }) => {
   const _ = useTranslation();
-  const { appService } = useEnv();
-  const [pendingAction, setPendingAction] = useState<'account' | 'books' | null>(null);
+  const [pendingAction, setPendingAction] = useState<'books' | null>(null);
 
   const confirmations = {
-    account: {
-      title: _('Delete Your Account?'),
-      message: _(
-        'This action cannot be undone. All your data in the cloud will be permanently deleted.',
-      ),
-      onConfirm: onConfirmDelete,
-    },
     books: {
       title: _('Delete All Books?'),
       message: _(
@@ -104,14 +85,6 @@ const AccountActions: React.FC<AccountActionsProps> = ({
         }}
       />
       <div className='flex flex-col gap-4 md:grid md:grid-cols-2 lg:grid-cols-3'>
-        {appService?.hasIAP && iapAvailable && (
-          <button
-            onClick={onRestorePurchase}
-            className='w-full rounded-lg bg-blue-100 px-6 py-3 font-medium text-blue-600 transition-colors hover:bg-blue-200 md:w-auto'
-          >
-            {_('Restore Purchase')}
-          </button>
-        )}
         {onManageSync && (
           <button
             onClick={onManageSync}
@@ -137,18 +110,6 @@ const AccountActions: React.FC<AccountActionsProps> = ({
           </button>
         )}
         <button
-          onClick={onResetPassword}
-          className='w-full rounded-lg bg-gray-200 px-6 py-3 font-medium text-gray-800 transition-colors hover:bg-gray-300 md:w-auto'
-        >
-          {_('Reset Password')}
-        </button>
-        <button
-          onClick={onUpdateEmail}
-          className='w-full rounded-lg bg-gray-200 px-6 py-3 font-medium text-gray-800 transition-colors hover:bg-gray-300 md:w-auto'
-        >
-          {_('Update Email')}
-        </button>
-        <button
           onClick={onLogout}
           className='w-full rounded-lg bg-gray-200 px-6 py-3 font-medium text-gray-800 transition-colors hover:bg-gray-300 md:w-auto'
         >
@@ -163,12 +124,6 @@ const AccountActions: React.FC<AccountActionsProps> = ({
             className='w-full rounded-lg bg-red-100 px-6 py-3 font-medium text-red-600 transition-colors hover:bg-red-200 md:w-auto'
           >
             {_('Delete All Books')}
-          </button>
-          <button
-            onClick={() => setPendingAction('account')}
-            className='w-full rounded-lg bg-red-100 px-6 py-3 font-medium text-red-600 transition-colors hover:bg-red-200 md:w-auto'
-          >
-            {_('Delete Account')}
           </button>
         </div>
       </div>

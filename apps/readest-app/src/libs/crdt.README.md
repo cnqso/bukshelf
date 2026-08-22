@@ -98,6 +98,5 @@ non-negotiable. Bugs cause silent data loss across devices.
   ciphertext.
 - `replicaSyncManager` (Lane E) — owns the HLC generator instance,
   observes remote HLCs on pull, persists snapshots to IndexedDB.
-- `crdt_merge_replica()` Postgres function — must implement the same
-  merge semantics on the server side, atomically. Tests in PR 1 will
-  enforce client/server parity.
+- Bun's SQLite `ReplicaStore` implements the same merge semantics atomically;
+  its convergence tests enforce client/server parity.

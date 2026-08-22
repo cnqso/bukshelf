@@ -27,7 +27,7 @@ describe('single-owner authentication', () => {
     expect(await auth.login('wrong password')).toBeNull();
   });
 
-  test('issues a Supabase-compatible owner JWT and persists its session', async () => {
+  test('issues an owner JWT and persists its session', async () => {
     const session = await auth.login('correct horse battery staple');
     expect(session?.user).toMatchObject({
       id: '2648b8e8-5b89-47ac-a207-f3322eb43ae0',

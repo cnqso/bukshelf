@@ -2,13 +2,8 @@ import crypto from 'crypto';
 import { NextApiRequest, NextApiResponse } from 'next';
 import { corsAllMethods, runMiddleware } from '@/utils/cors';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
-import {
-  getDailyTranslationPlanData,
-  getSubscriptionPlan,
-  validateUserAndToken,
-} from '@/utils/access';
+import { getSubscriptionPlan, validateUserAndToken } from '@/utils/access';
 import { ErrorCodes } from '@/services/translators';
-import { UsageStatsManager } from '@/utils/usage';
 
 const DEFAULT_DEEPL_FREE_API = 'https://api-free.deepl.com/v2/translate';
 const DEFAULT_DEEPL_PRO_API = 'https://api.deepl.com/v2/translate';
@@ -37,43 +32,6 @@ const generateCacheKey = (text: string, sourceLang: string, targetLang: string):
   const inputString = `${sourceLang}:${targetLang}:${text}`;
   const hash = crypto.createHash('sha1').update(inputString).digest('hex');
   return `tr:${hash}`;
-};
-
-const checkDailyUsage = async (userId: string, token: string, chars: number) => {
-  const { quota: dailyQuota } = getDailyTranslationPlanData(token);
-  const dailyUsage = await UsageStatsManager.getCurrentUsage(userId, 'translation_chars', 'daily');
-
-  if (dailyQuota <= dailyUsage + chars) {
-    throw new Error(ErrorCodes.DAILY_QUOTA_EXCEEDED);
-  }
-  return dailyUsage;
-};
-
-const updateDailyUsage = async (
-  userId: string | undefined,
-  token: string | undefined,
-  incrementUsage: number,
-) => {
-  if (!userId || !token) return 0;
-
-  try {
-    const userPlan = getSubscriptionPlan(token);
-    const newUsage = await UsageStatsManager.trackUsage(
-      userId,
-      'translation_chars',
-      incrementUsage,
-      {
-        plan_type: userPlan,
-        source: 'deepl_api',
-      },
-    );
-
-    return newUsage;
-  } catch (cacheError) {
-    console.error('Update daily usage error:', cacheError);
-  }
-
-  return 0;
 };
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -138,8 +96,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         }
 
         if (!user || !token) return res.status(401).json({ error: ErrorCodes.UNAUTHORIZED });
-        await checkDailyUsage(user?.id, token, singleText.length);
-
         return await callDeepLAPI(
           singleText,
           sourceLang,
@@ -151,16 +107,9 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         );
       }),
     );
-    const originalCharsCount = text.reduce((a, b) => a + b.length, 0);
-    const translatedCharsCount = translations.reduce((a, b) => a + (b?.text.length || 0), 0);
-    const newDailyUsage = await updateDailyUsage(
-      user?.id,
-      token,
-      originalCharsCount + translatedCharsCount,
-    );
     translations.forEach((translation) => {
       if (translation && translation.text) {
-        translation.daily_usage = newDailyUsage;
+        translation.daily_usage = 0;
       }
     });
     return res.status(200).json({ translations });

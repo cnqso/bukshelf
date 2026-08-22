@@ -29,21 +29,6 @@ export const getUserProfilePlan = (token: string): UserPlan => {
 };
 
 /**
- * Plans that include the "Send to Readest via email" feature: Plus,
- * Pro, and Lifetime (`purchase`). Free users see an upgrade card on
- * the client and get a 403 from the server endpoints that allocate /
- * rotate the address, plus a bounce from the inbound email Worker.
- *
- * Other Send channels (in-app `/send` page, mobile share-sheet, browser
- * extension) stay open to free users — the gate is the personal email
- * inbox only.
- */
-export const EMAIL_IN_PLANS: readonly UserPlan[] = ['plus', 'pro', 'purchase'];
-
-export const isEmailInPlan = (plan: UserPlan): boolean =>
-  (EMAIL_IN_PLANS as readonly UserPlan[]).includes(plan);
-
-/**
  * Plans that include third-party cloud sync (WebDAV / Google Drive): any paid
  * plan — Plus, Pro, and Lifetime (`purchase`). Free users see an upgrade prompt
  * in Settings and the reader's auto-sync stays off, so syncing to a personal

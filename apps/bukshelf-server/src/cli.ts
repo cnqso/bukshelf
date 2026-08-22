@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { SQL } from 'bun';
 import { AuthStore } from './authStore';
-import { getDatabasePath, getLegacyDatabaseUrl } from './config';
+import { getDatabasePath } from './config';
 
 const args = process.argv.slice(2);
 const passwordFromStdin = args.includes('--password-stdin');
@@ -15,7 +14,6 @@ const positional = args.filter(
 const usage = () => {
   console.log(`Usage:
   bun src/cli.ts auth setup [--email owner@example.com] [--password-stdin]
-  bun src/cli.ts auth import-legacy [--email owner@example.com]
   bun src/cli.ts auth reset [--password-stdin]
 
 With --password-stdin, provide the password as the first line of stdin.`);
@@ -68,32 +66,6 @@ const authSetup = async (store: AuthStore) => {
   console.log(`Configured Bukshelf owner ${email}`);
 };
 
-const importLegacyOwner = async (store: AuthStore) => {
-  if (store.getOwner()) throw new Error('Bukshelf owner is already configured');
-  const email = readOwnerEmail();
-  const legacy = new SQL(getLegacyDatabaseUrl());
-  try {
-    const rows = await legacy`
-      SELECT id, email, encrypted_password
-      FROM auth.users
-      WHERE lower(email) = lower(${email})
-      LIMIT 1
-    `;
-    const owner = rows[0];
-    if (!owner?.id || !owner.email || !owner.encrypted_password) {
-      throw new Error(`No password owner found for ${email} in legacy auth`);
-    }
-    store.createOwner({
-      id: owner.id,
-      email: owner.email,
-      passwordHash: owner.encrypted_password,
-    });
-    console.log(`Imported Bukshelf owner ${owner.email}; no password was copied in plaintext`);
-  } finally {
-    await legacy.close();
-  }
-};
-
 const authReset = async (store: AuthStore) => {
   if (!store.getOwner()) throw new Error('Bukshelf owner is not configured');
   const password = await readPassword();
@@ -103,10 +75,7 @@ const authReset = async (store: AuthStore) => {
 };
 
 const main = async () => {
-  if (
-    positional[0] !== 'auth' ||
-    !['setup', 'import-legacy', 'reset'].includes(positional[1] ?? '')
-  ) {
+  if (positional[0] !== 'auth' || !['setup', 'reset'].includes(positional[1] ?? '')) {
     usage();
     process.exitCode = 1;
     return;
@@ -115,7 +84,6 @@ const main = async () => {
   const store = new AuthStore(getDatabasePath());
   try {
     if (positional[1] === 'setup') await authSetup(store);
-    if (positional[1] === 'import-legacy') await importLegacyOwner(store);
     if (positional[1] === 'reset') await authReset(store);
   } finally {
     store.close();

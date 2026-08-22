@@ -2,10 +2,8 @@ import { randomUUID } from 'node:crypto';
 import type { Database } from 'bun:sqlite';
 
 /**
- * Single-owner replacement for the legacy `book_shares` Postgres table (see
- * docker/volumes/db/migrations/002_add_book_shares.sql). There is exactly one
- * owner in Bukshelf, so the `user_id` column and its RLS policies have no
- * equivalent here — a share row belongs to the deployment, full stop.
+ * Single-owner share registry. There is exactly one owner in Bukshelf, so a
+ * share row belongs to the deployment rather than to a tenant.
  */
 
 export interface ShareRow {

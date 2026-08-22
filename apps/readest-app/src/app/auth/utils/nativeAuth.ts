@@ -4,11 +4,7 @@ import { type as osType } from '@tauri-apps/plugin-os';
 
 export interface AuthRequest {
   authUrl: string;
-  /**
-   * iOS `ASWebAuthenticationSession` callback scheme. Defaults to `readest`
-   * natively (the Supabase login); the Google Drive flow passes its reverse-DNS
-   * scheme so the session intercepts that redirect instead.
-   */
+  /** iOS ASWebAuthenticationSession callback scheme. */
   callbackScheme?: string;
 }
 
@@ -24,11 +20,11 @@ export interface AuthResponse {
 export async function authWithSafari(request: AuthRequest): Promise<AuthResponse> {
   const OS_TYPE = osType();
   if (OS_TYPE === 'ios') {
-    const result = await invoke<AuthResponse>('plugin:native-bridge|auth_with_safari', {
+    return invoke<AuthResponse>('plugin:native-bridge|auth_with_safari', {
       payload: request,
     });
-    return result;
-  } else if (OS_TYPE === 'macos') {
+  }
+  if (OS_TYPE === 'macos') {
     return new Promise<AuthResponse>(async (resolve, reject) => {
       const unlistenComplete = await listen<AuthResponse>('safari-auth-complete', ({ payload }) => {
         cleanup();
@@ -46,15 +42,12 @@ export async function authWithSafari(request: AuthRequest): Promise<AuthResponse
         reject(err);
       }
     });
-  } else {
-    throw new Error('Unsupported OS type');
   }
+  throw new Error('Unsupported OS type');
 }
 
 export async function authWithCustomTab(request: CustomTabAuthRequest): Promise<AuthResponse> {
-  const result = await invoke<AuthResponse>('plugin:native-bridge|auth_with_custom_tab', {
+  return invoke<AuthResponse>('plugin:native-bridge|auth_with_custom_tab', {
     payload: request,
   });
-
-  return result;
 }

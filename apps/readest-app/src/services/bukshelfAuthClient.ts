@@ -1,10 +1,10 @@
-import type { User } from '@supabase/supabase-js';
+import type { AuthUser } from '@/types/auth';
 import { getBukshelfApiBaseUrl } from './runtimeConfig';
 
 interface BukshelfSessionResponse {
   accessToken: string;
   expiresAt: number;
-  user: User;
+  user: AuthUser;
 }
 
 export interface BukshelfAuthStatus {

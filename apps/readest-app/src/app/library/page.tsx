@@ -49,7 +49,6 @@ import { useBooksSync } from './hooks/useBooksSync';
 import { useLibraryFileSync } from './hooks/useLibraryFileSync';
 import { useBookTransferActions } from './hooks/useBookTransferActions';
 import { useAutoImportFolders } from './hooks/useAutoImportFolders';
-import { useInboxDrainer } from '@/hooks/useInboxDrainer';
 import { useOPDSSubscriptions } from '@/hooks/useOPDSSubscriptions';
 import { useBookDataStore } from '@/store/bookDataStore';
 import { useTransferStore } from '@/store/transferStore';
@@ -376,7 +375,6 @@ const LibraryPageContent = ({ searchParams }: { searchParams: ReadonlyURLSearchP
   // parity with useBooksSync. No-op when no provider is enabled.
   useLibraryFileSync();
   const { checkOPDSSubscriptions } = useOPDSSubscriptions();
-  useInboxDrainer();
   const { isDragging } = useDragDropImport();
 
   usePullToRefresh(

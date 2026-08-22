@@ -81,15 +81,9 @@ browser/native smoke test appropriate to the changed behavior.
 
 ## Current State
 
-- Postgres and MinIO are no longer part of the default runtime or its
-  Compose stack. `docker compose up` (docker/compose.yaml) starts only the
-  Bukshelf image: one process, SQLite, and a filesystem data directory. The
-  legacy Supabase/Postgres/MinIO/Kong stack survives only as
-  `docker/compose.legacy-migration.yaml`, brought up temporarily so the
-  one-time importers (`pnpm import:bukshelf`, `auth:import-legacy`) can read
-  an existing pre-Bukshelf deployment's data; it is not started by default
-  and the importers never require its `client`/`auth` services to be
-  reachable, only `db` and `minio`.
+- The old hosted stack and its migration tooling have been deleted. Compose
+  starts only Bukshelf: one Bun process, SQLite, and a filesystem data
+  directory.
 - Book sharing (create/list/revoke/cover/download/download-confirm/import)
   moved from Postgres (`book_shares`) + MinIO presigned URLs to
   `bukshelf.sqlite` + the existing filesystem object store. Single-owner
@@ -115,13 +109,10 @@ browser/native smoke test appropriate to the changed behavior.
 - The classic sync tables are consolidated into one indexed JSON record table;
   replicas retain a dedicated table because field-level HLC merging is a real
   semantic difference, not legacy topology worth preserving.
-- The signed-out catalog now reads SQLite plus local cover files. Postgres and
-  MinIO participate only in the explicit, idempotent one-time import command.
+- The signed-out catalog reads SQLite plus local cover files.
 - Bun now owns the single owner's password hash and session registry in
   `bukshelf.sqlite`. Web login uses an HttpOnly cookie plus a bearer token for
   the existing frontend API contract; login no longer calls GoTrue.
-- The existing owner's UUID, email, and bcrypt hash were imported once without
-  copying or logging a plaintext password. Fresh installs use `auth:setup`.
 - The unified data directory now contains `bukshelf.sqlite`, imported books,
   imported covers, private files, and temporary writes. Public cover delivery
   no longer reads MinIO and remains available when MinIO is stopped.
@@ -134,14 +125,6 @@ browser/native smoke test appropriate to the changed behavior.
   also Bun/SQLite operations. Self-hosted storage has no artificial quota.
 - Bun idempotently indexes already-imported hash-keyed books and covers into
   SQLite at startup, so the Storage Manager is complete without Postgres.
-- Imported hash-keyed books and covers remain readable through a narrow
-  filesystem bridge, so migration does not require a second copy. Temporary
-  public image uploads used by Discord presence remain on the legacy route;
-  they are not part of the private bookshelf storage path.
-- The legacy stack and Bun server have been smoke-tested concurrently without
-  changing the existing Postgres or MinIO data volumes.
-- The real owner metadata import contains 1 book, 1 config, 2 notes, 1 stats
-  book, and 70 page events; Bun's live incremental API returns the same keyset.
 - Reader AI, Soniox TTS, and usage metering have moved into Bun. The frontend
   calls `POST/GET /api/ai/chat`, `POST/GET /api/tts/soniox`, and
   `/api/usage[/summary|/events]` on the Bukshelf origin directly; there is no
@@ -182,7 +165,6 @@ browser/native smoke test appropriate to the changed behavior.
 | Purpose | Address |
 | --- | --- |
 | Bukshelf | `http://localhost:43175` |
-| Legacy stack (migration only, `compose.legacy-migration.yaml`) | ports `43171`-`43176`, see docker/README.md |
 
 Run the Bun server from the repository root with `pnpm dev:bukshelf`. Use
 `pnpm dev:bukshelf:fresh` to erase the repository-local Bukshelf development
@@ -235,7 +217,6 @@ append `-- --password-stdin` and provide one line on standard input.
 
 ```text
 pnpm --dir apps/bukshelf-server auth:setup
-pnpm --dir apps/bukshelf-server auth:import-legacy
 pnpm --dir apps/bukshelf-server auth:reset
 pnpm dev:bukshelf:fresh
 pnpm backup:bukshelf create
@@ -249,9 +230,9 @@ permanently closes after that account is created.
 
 ## Next Step
 
-Stripe is removed (routes, libs, UI, npm deps); IAP (Apple/Google) is kept as
-the only purchase path. Neither was ever provisioned in the self-hosted
-schema, so this was a deletion, not a migration. The remaining Next.js
-routes with no Postgres/MinIO coupling at all (translation providers,
-metadata search, OPDS proxying, Hardcover, Edge TTS) are a straightforward
-port into Bun whenever picked up, not a data migration.
+Supabase is removed from every workspace manifest, the lockfile, and the
+frontend source. The obsolete cloud-auth UI, Next storage/sync/user handlers,
+IAP bookkeeping, and Email-to-Readest worker/inbox were deleted with it. The
+remaining Next.js routes (translation providers, metadata search, OPDS
+proxying, Hardcover, Edge TTS, and local Send URL fetching) have no external
+database coupling and can move into Bun one at a time.

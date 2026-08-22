@@ -1,7 +1,7 @@
 'use client';
 
 import clsx from 'clsx';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEnv } from '@/context/EnvContext';
 import { useAuth } from '@/context/AuthContext';
@@ -10,25 +10,13 @@ import { useThemeStore } from '@/store/themeStore';
 import { useQuotaStats } from '@/hooks/useQuotaStats';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useUserActions } from '@/hooks/useUserActions';
-import { useAvailablePlans } from '@/hooks/useAvailablePlans';
 import { navigateToLibrary } from '@/utils/nav';
-import { eventDispatcher } from '@/utils/event';
 import { getPlanDetails } from './utils/plan';
 import { Toast } from '@/components/Toast';
-import {
-  purchaseIAPProduct,
-  restoreIAPPurchases,
-  verifyApplePurchaseProducts,
-  verifyGooglePurchaseProducts,
-  getSubscriptionSuccessUrl as getIAPSubscriptionSuccessUrl,
-} from '@/libs/payment/iap/client';
-import { isPurchaseProduct } from '@/libs/payment/iap/utils';
 import LegalLinks from '@/components/LegalLinks';
-import Spinner from '@/components/Spinner';
 import ProfileHeader from './components/Header';
 import UserInfo from './components/UserInfo';
 import UsageStats from './components/UsageStats';
-import PlansComparison from './components/PlansComparison';
 import AccountActions from './components/AccountActions';
 import StorageManager from './components/StorageManager';
 import SharedLinksSection from './components/SharedLinksSection';
@@ -42,7 +30,6 @@ const ProfilePage = () => {
   const { token, user, refresh } = useAuth();
   const { safeAreaInsets, isRoundedWindow } = useThemeStore();
 
-  const [loading, setLoading] = useState(false);
   const [showStorageManager, setShowStorageManager] = useState(false);
   const [showSharedLinksManager, setShowSharedLinksManager] = useState(false);
   const searchParams = useSearchParams();
@@ -69,26 +56,7 @@ const ProfilePage = () => {
   useTheme({ systemUIVisible: false });
 
   const { quotas, userProfilePlan = 'free' } = useQuotaStats();
-  const {
-    handleLogout,
-    handleResetPassword,
-    handleUpdateEmail,
-    handleConfirmDelete,
-    handleDeleteAllBooks,
-  } = useUserActions();
-
-  const { availablePlans, iapAvailable } = useAvailablePlans({
-    hasIAP: appService?.hasIAP || false,
-    onError: useCallback(
-      (message: string) => {
-        eventDispatcher.dispatch('toast', {
-          type: 'info',
-          message: _(message),
-        });
-      },
-      [_],
-    ),
-  });
+  const { handleLogout, handleDeleteAllBooks } = useUserActions();
 
   const handleGoBack = () => {
     if (showStorageManager) {
@@ -101,69 +69,6 @@ const ProfilePage = () => {
     } else {
       navigateToLibrary(router);
     }
-  };
-
-  const handleIAPSubscribe = async (productId?: string) => {
-    if (!productId) return;
-
-    setLoading(true);
-    try {
-      const purchase = await purchaseIAPProduct(productId);
-      if (purchase) {
-        router.push(getIAPSubscriptionSuccessUrl(purchase));
-      }
-    } catch (error) {
-      console.error('IAP purchase error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleIAPRestorePurchase = async () => {
-    setLoading(true);
-    try {
-      const purchases = await restoreIAPPurchases();
-      if (purchases.length > 0) {
-        // Restored one-time purchases (storage add-ons) may still be
-        // unconsumed on Google Play, blocking repurchase; re-verifying lets
-        // the server consume them. On iOS, restore is the only flow that can
-        // record a purchase whose original verification never reached the
-        // server, so re-verify those too.
-        await verifyGooglePurchaseProducts(purchases);
-        await verifyApplePurchaseProducts(purchases);
-        const restoredSubscriptions = purchases
-          .filter((p) => !isPurchaseProduct(p.productId))
-          .sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
-        const purchase = restoredSubscriptions[0];
-
-        if (purchase) {
-          router.push(getIAPSubscriptionSuccessUrl(purchase));
-        } else if (purchases.some((p) => isPurchaseProduct(p.productId))) {
-          eventDispatcher.dispatch('toast', {
-            type: 'info',
-            message: _('Purchases restored successfully.'),
-          });
-        } else {
-          throw new Error('No subscription found in restored purchases');
-        }
-      } else {
-        eventDispatcher.dispatch('toast', {
-          type: 'info',
-          message: _('No purchases found to restore.'),
-        });
-      }
-    } catch (error) {
-      console.error('Failed to restore purchases:', error);
-      eventDispatcher.dispatch('toast', {
-        type: 'info',
-        message: _('Failed to restore purchases.'),
-      });
-    }
-    setLoading(false);
-  };
-
-  const handleDeleteWithMessage = () => {
-    handleConfirmDelete(_('Failed to delete user. Please try again later.'));
   };
 
   const handleDeleteAllBooksWithMessage = () => {
@@ -203,8 +108,7 @@ const ProfilePage = () => {
   const avatarUrl = user?.user_metadata?.['picture'] || user?.user_metadata?.['avatar_url'];
   const userFullName = user?.user_metadata?.['full_name'] || '-';
   const userEmail = user?.email || '';
-  const userPlanDetails =
-    getPlanDetails(userProfilePlan, availablePlans) || getPlanDetails('free', availablePlans);
+  const userPlanDetails = getPlanDetails(userProfilePlan, []);
 
   return (
     <div
@@ -221,11 +125,6 @@ const ProfilePage = () => {
       >
         <ProfileHeader onGoBack={handleGoBack} />
         <div className='w-full min-w-60 max-w-4xl py-10'>
-          {loading && (
-            <div className='fixed inset-0 z-50 flex items-center justify-center'>
-              <Spinner loading className='text-gray-900' />
-            </div>
-          )}
           <div className='sm:bg-base-200 overflow-hidden rounded-lg sm:p-6 sm:shadow-md'>
             <div className='flex flex-col gap-y-8'>
               <div className='flex flex-col gap-y-8 px-6'>
@@ -256,22 +155,10 @@ const ProfilePage = () => {
                 </div>
               ) : (
                 <>
-                  <div className='flex flex-col gap-y-8 sm:px-6'>
-                    <PlansComparison
-                      availablePlans={availablePlans}
-                      userPlan={userProfilePlan}
-                      onSubscribe={handleIAPSubscribe}
-                    />
-                  </div>
                   <div className='flex flex-col gap-y-8 px-6'>
                     <AccountActions
-                      iapAvailable={iapAvailable}
                       onLogout={handleLogout}
-                      onResetPassword={handleResetPassword}
-                      onUpdateEmail={handleUpdateEmail}
-                      onConfirmDelete={handleDeleteWithMessage}
                       onConfirmDeleteAllBooks={handleDeleteAllBooksWithMessage}
-                      onRestorePurchase={handleIAPRestorePurchase}
                       onManageStorage={handleManageStorage}
                       onManageSharedLinks={handleManageSharedLinks}
                       onManageSync={handleManageSync}

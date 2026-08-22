@@ -9,7 +9,6 @@ import {
   RiBookReadLine,
   RiBook3Line,
   RiDiscordLine,
-  RiSendPlaneLine,
   RiWifiLine,
   RiCloudLine,
   RiCloudFill,
@@ -40,7 +39,6 @@ import BookOrbitForm from './integrations/BookOrbitForm';
 import KOSyncForm from './integrations/KOSyncForm';
 import ReadwiseForm from './integrations/ReadwiseForm';
 import HardcoverForm from './integrations/HardcoverForm';
-import SendToReadestForm from './integrations/SendToReadestForm';
 import LocalSendForm from './integrations/LocalSendForm';
 import WebDAVForm from './integrations/WebDAVForm';
 import GoogleDriveForm from './integrations/GoogleDriveForm';
@@ -77,7 +75,6 @@ type SubPage =
   | 'readwise'
   | 'hardcover'
   | 'opds'
-  | 'send'
   | 'localsend'
   | null;
 
@@ -149,7 +146,7 @@ const IntegrationsPanel: React.FC = () => {
   }, [envConfig]);
 
   // Android Back / Esc: when any integrations sub-page (KOSync, WebDAV,
-  // Readwise, Hardcover, OPDS, Send-to-Readest) is open, intercept and
+  // Readwise, Hardcover, OPDS) is open, intercept and
   // step back to the integrations list instead of letting <Dialog>'s
   // listener close the whole Settings dialog. The hook registers its
   // sync `native-key-down` listener *after* <Dialog>'s, and
@@ -201,7 +198,6 @@ const IntegrationsPanel: React.FC = () => {
       requestedSubPage === 'readwise' ||
       requestedSubPage === 'hardcover' ||
       requestedSubPage === 'opds' ||
-      requestedSubPage === 'send' ||
       requestedSubPage === 'localsend'
     ) {
       setSubPage(requestedSubPage);
@@ -438,12 +434,6 @@ const IntegrationsPanel: React.FC = () => {
           onBack={() => setSubPage(null)}
         />
         <CatalogManager inSubPage />
-      </div>
-    );
-  if (subPage === 'send')
-    return (
-      <div className='my-4 w-full'>
-        <SendToReadestForm onBack={() => setSubPage(null)} />
       </div>
     );
 
@@ -734,12 +724,6 @@ const IntegrationsPanel: React.FC = () => {
               title={_('OPDS Catalogs')}
               status={opdsStatus}
               onClick={() => setSubPage('opds')}
-            />
-            <IntegrationRow
-              icon={RiSendPlaneLine}
-              title={_('Send to Readest')}
-              status={_('Email books to your library')}
-              onClick={() => setSubPage('send')}
             />
             {isTauriAppPlatform() && (
               <IntegrationRow

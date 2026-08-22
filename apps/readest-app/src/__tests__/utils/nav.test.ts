@@ -38,8 +38,6 @@ import {
   navigateToLogin,
   navigateToProfile,
   navigateToLibrary,
-  navigateToResetPassword,
-  navigateToUpdatePassword,
   redirectToLibrary,
   showReaderWindow,
   showLibraryWindow,
@@ -251,64 +249,6 @@ describe('redirectToLibrary', () => {
   test('calls redirect to /library', () => {
     redirectToLibrary();
     expect(redirect).toHaveBeenCalledWith('/library');
-  });
-});
-
-describe('navigateToResetPassword', () => {
-  test('navigates to /auth/recovery with redirect', () => {
-    Object.defineProperty(window, 'location', {
-      value: { pathname: '/settings', search: '' },
-      writable: true,
-    });
-
-    const router = mockRouter();
-    navigateToResetPassword(router);
-
-    const url = router.push.mock.calls[0]![0] as string;
-    expect(url).toContain('/auth/recovery?redirect=');
-    expect(url).toContain(encodeURIComponent('/settings'));
-  });
-
-  test('uses / as redirect when on /auth', () => {
-    Object.defineProperty(window, 'location', {
-      value: { pathname: '/auth', search: '' },
-      writable: true,
-    });
-
-    const router = mockRouter();
-    navigateToResetPassword(router);
-
-    const url = router.push.mock.calls[0]![0] as string;
-    expect(url).toBe('/auth/recovery?redirect=%2F');
-  });
-});
-
-describe('navigateToUpdatePassword', () => {
-  test('navigates to /auth/update with redirect', () => {
-    Object.defineProperty(window, 'location', {
-      value: { pathname: '/user', search: '?tab=security' },
-      writable: true,
-    });
-
-    const router = mockRouter();
-    navigateToUpdatePassword(router);
-
-    const url = router.push.mock.calls[0]![0] as string;
-    expect(url).toContain('/auth/update?redirect=');
-    expect(url).toContain(encodeURIComponent('/user?tab=security'));
-  });
-
-  test('uses / as redirect when on /auth', () => {
-    Object.defineProperty(window, 'location', {
-      value: { pathname: '/auth', search: '' },
-      writable: true,
-    });
-
-    const router = mockRouter();
-    navigateToUpdatePassword(router);
-
-    const url = router.push.mock.calls[0]![0] as string;
-    expect(url).toBe('/auth/update?redirect=%2F');
   });
 });
 

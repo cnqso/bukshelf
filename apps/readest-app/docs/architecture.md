@@ -36,16 +36,14 @@ flowchart LR
         WinExt["Windows shell ext<br/>(thumbnail provider)"]
     end
 
-    subgraph Backend["Readest backend (Next.js routes + Cloudflare Worker)"]
+    subgraph Backend["Bukshelf server"]
+        Bun["Bun API<br/>(auth + SQLite + files + sync + AI/TTS)"]
         AppApi["src/app/api/*<br/>(App Router)"]
         PagesApi["src/pages/api/*<br/>(Pages Router)"]
         RuntimeCfg["/runtime-config.js<br/>(server-injected config)"]
-        Worker["workers/send-email<br/>(Cloudflare Worker)"]
     end
 
     subgraph Cloud["External services"]
-        Supabase["Supabase<br/>(auth + Postgres)"]
-        S3["Object storage<br/>(S3 / R2)"]
         AI["AI providers<br/>(OpenAI / Ollama / ...)"]
         Trans["Translators<br/>(DeepL / Google / Azure / Yandex)"]
         Meta["Metadata providers<br/>(Google Books / Open Library)"]
@@ -54,7 +52,6 @@ flowchart LR
         Hardcover["Hardcover GraphQL"]
         Readwise["Readwise"]
         TTS["Edge TTS"]
-        IAP["Apple / Google IAP"]
     end
 
     Desktop --> Backend
@@ -63,16 +60,14 @@ flowchart LR
     Ext --> PagesApi
     WinExt -.reads files.-> Desktop
 
-    PagesApi --> Supabase
-    PagesApi --> S3
     PagesApi --> Trans
-    AppApi --> Supabase
     AppApi --> AI
     AppApi --> Meta
     AppApi --> OPDS
     AppApi --> Hardcover
     AppApi --> TTS
-    AppApi --> IAP
+    Bun --> AI
+    Bun --> TTS
 
     Web -.direct.-> Dict
     Desktop -.direct.-> Dict
@@ -81,10 +76,9 @@ flowchart LR
     Desktop -.direct.-> Readwise
 ```
 
-The `Backend` box is **the same code on all clients**. In the web target it is
-deployed as a Cloudflare Worker (via `@opennextjs/cloudflare` and
-`wrangler.toml`). In the Tauri targets the same routes are served by a Next.js
-runtime, but most clients hit the production deployment over HTTPS.
+The hosted Bukshelf target runs Bun and the Next.js frontend in one process.
+Tauri clients reuse the React reader and native platform layer while connecting
+to the configured Bukshelf API for account, sync, storage, AI, and hosted TTS.
 
 ## 2. Process boundaries
 
@@ -144,8 +138,8 @@ dictionary plugin runtime.
 `/runtime-config.js` is a server route that emits
 `window.__READEST_RUNTIME_CONFIG = {...}` as a JavaScript file. It is loaded as
 a `<script>` tag from `app/layout.tsx` and `pages/_document.tsx`. This is what
-lets a single Docker image be rebranded with a different Supabase project, S3
-endpoint, or quota at deploy time without rebuilding — see commit
+lets a single Docker image be rebranded and pointed at its Bukshelf API at
+deploy time without rebuilding — see commit
 `9ad43aa8` and the `docker/` directory.
 
 ## 3. Frontend architecture
@@ -166,9 +160,9 @@ flowchart TB
     Layout["app/layout.tsx<br/>(root shell, runtime-config script, Providers)"]
     Library["app/library<br/>(grid, import, sort, OPDS shelf)"]
     Reader["app/reader<br/>(views + tooling)"]
-    Auth["app/auth<br/>(Supabase auth UI)"]
-    Send["app/send<br/>(send-to-Readest inbox)"]
-    User["app/user<br/>(account, subscription, settings)"]
+    Auth["app/auth<br/>(single-owner auth)"]
+    Send["app/send<br/>(local article conversion)"]
+    User["app/user<br/>(account, storage, sync)"]
     Updater["app/updater"]
     Offline["app/offline"]
     OPDS["app/opds<br/>(catalog browser)"]
@@ -253,7 +247,7 @@ offline route at `/offline`.
 
 The single most important abstraction in the codebase is
 `src/services/appService.ts`. Every piece of code that touches "the platform"
-(file system, native dialogs, shell open, native TTS, IAP, dir scanning,
+(file system, native dialogs, shell open, native TTS, dir scanning,
 deep links, etc.) goes through an `AppService` interface. There are three
 implementations:
 
@@ -298,61 +292,30 @@ Pages Router. The split is pragmatic, not load-bearing: new routes go to
 
 ### 5.1 Pages Router endpoints (`src/pages/api`)
 
-These are the long-standing server endpoints around sync, storage, and email:
+These are the remaining compatibility and provider endpoints:
 
 ```
-sync.ts                  -> KOReader-compatible sync client (`KOSyncClient`)
 kosync.ts                -> KOSync legacy bridge
-sync/replicas.ts         -> replica sync upload/download (encrypted blobs)
-sync/replica-keys.ts     -> replica key bootstrap
-storage/upload.ts        -> presigned upload to S3/R2 for book bytes
-storage/download.ts      -> presigned download
-storage/list.ts          -> list user's objects
-storage/delete.ts        -> delete a single object
-storage/purge.ts         -> bulk wipe (account deletion path)
-storage/stats.ts         -> per-user usage/quotas
-send/inbox.ts            -> "Send to Readest" inbox listing
-send/inbox/*             -> inbox item operations
-send/address.ts          -> per-user inbox address resolver
 send/fetch-url.ts        -> server-side URL fetcher for "send a link"
-send/senders.ts          -> sender allowlist
-deepl/translate.ts       -> DeepL translation proxy (hides API key)
-user/delete.ts           -> account deletion
+deepl/translate.ts       -> DeepL translation proxy
 ```
-
-The storage layer talks to S3-compatible storage through `src/utils/s3.ts`,
-which honors a `S3_PUBLIC_ENDPOINT` distinct from the internal endpoint so
-docker-compose deployments can route browsers through one origin and the
-server through another.
 
 ### 5.2 App Router endpoints (`src/app/api`)
 
 Newer endpoints, grouped by domain:
 
 ```
-ai/chat                  -> streaming AI chat (Vercel AI SDK)
-ai/embed                 -> embeddings for in-book RAG
 metadata/search          -> metadata lookup (Google Books / Open Library)
 opds/proxy               -> CORS-friendly OPDS proxy
 tts/edge                 -> Edge TTS streaming
 hardcover/graphql        -> Hardcover GraphQL relay
-google/iap-verify        -> Google Play IAP verification
-apple/iap-verify         -> App Store IAP verification
-share/*                  -> share-link landing + read-only render
+share/*/og.png           -> share-link social preview rendering
 ```
 
-### 5.3 Workers
-
-`apps/readest-app/workers/send-email` is a separate Cloudflare Worker
-(deployed independently from the main app) responsible for the "Send to Readest
-by email" path. It receives mail, normalizes attachments, and drops items into
-the user's inbox so that the in-app `Send` page can pick them up via the
-`/api/send/inbox` endpoints.
-
-### 5.4 Runtime config
+### 5.3 Runtime config
 
 `src/app/runtime-config.js/route.ts` is a server route that builds a small JSON
-object — `supabaseUrl`, `supabaseAnonKey`, `apiBaseUrl`, `objectStorageType`,
+object — including `apiBaseUrl`, `bukshelfApiBaseUrl`, `objectStorageType`,
 `storageFixedQuota`, `translationFixedQuota` — from `process.env` at request
 time and serializes it as a JS payload. The client reads it through
 `getRuntimeConfig()` in `src/services/runtimeConfig.ts` (browser) or
@@ -399,17 +362,17 @@ metadata):
 - import flow: `src/services/ingestService.ts` decides whether a book is
   imported as a hash copy under `Books/<hash>/` or kept *in place* at the
   user's chosen path (the "in-place" mode added in commit `dd107277`).
-- upload: `cloudService.uploadBook` uses the storage layer to push bytes to S3
-  through `pages/api/storage/upload.ts`.
-- download: peers fetch via `pages/api/storage/download.ts`, materializing the
+- upload: `cloudService.uploadBook` pushes bytes to Bun's authenticated
+  filesystem API.
+- download: peers fetch from that API, materializing the
   book into `Books/<hash>/` regardless of whether the original device kept it
   in-place.
 - delete: symmetric local/cloud/both semantics in `cloudService.deleteBook`.
 
-### 6.3 AI / RAG
+### 6.3 Reader AI
 
-`src/services/ai` provides the chat and embedding abstraction with provider
-adapters, prompt assembly, chunking, retry, and a local AI store. UI lives in
+`src/services/ai` provides the chat abstraction with provider adapters, prompt
+assembly, retry, and a local AI store. UI lives in
 `components/assistant` and the reader-side `app/reader/components/AIChat*`. The
 HTTP entrypoints are `src/app/api/ai/chat` (streaming) and
 `src/app/api/ai/embed`. The reader can do book-scoped RAG by embedding chapters
@@ -496,21 +459,19 @@ import/export adapter for moving annotations to and from MoonReader.
 punctuation normalization, whitespace collapsing, proofread suggestions,
 sanitization, footnote rewriting, style injection, traditional/simplified
 Chinese conversion (via `simplecc-wasm`), and Warichu (Japanese ruby/rubi)
-layout. These are reused by the reader, by RSVP, and by the
-"Send to Readest" article-to-EPUB conversion.
+layout. These are reused by the reader, by RSVP, and by local article-to-EPUB
+conversion.
 
-### 6.11 Send to Readest
+### 6.11 Local Send conversion
 
 End-to-end pipeline:
 
 1. The browser extension (`apps/readest-app/extension/send-to-readest`) or the
-   email-to-inbox path (`workers/send-email`) submits a URL or article HTML.
+   in-app Send page submits a URL or article HTML.
 2. `src/services/send/conversion/*` sanitizes the content and converts it to
    EPUB (sanitization, TOC building, asset bundling, worker protocol).
-3. The result lands in the user's inbox served by `pages/api/send/inbox*`.
-4. The `app/send` page or the in-app inbox drainer
-   (`src/services/send/inboxDrainer.ts`) imports it into the library through
-   the standard ingest service.
+3. The `app/send` page imports the result directly through the standard ingest
+   service; there is no server-side email inbox.
 
 ## 7. Native shell (`src-tauri`)
 
@@ -585,9 +546,9 @@ flowchart LR
 The web target has two delivery modes: a Cloudflare Worker via OpenNext
 (`pnpm deploy`) and a self-hostable Docker image built and published from
 `.github/workflows/docker-image.yml` to GHCR and Docker Hub. The Docker image
-uses `docker/compose.yaml` (pull) plus `docker/compose.build.yaml` (build) and
-relies on the runtime-config mechanism described in section 5.4 so a single
-prebuilt image can be parameterized with `.env`.
+uses `docker/compose.yaml`; the same file can build locally or run a configured
+published image. Runtime config lets one prebuilt image be parameterized with
+`.env`.
 
 Tauri builds use `dotenv` to switch env files (`.env.tauri`,
 `.env.tauri.local`, `.env.apple-*.local`, `.env.ios-*.local`,

@@ -51,7 +51,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65_535) {
 if (publicLibraryEnabled && !dataDir) {
   throw new Error(
     'BUKSHELF_DATA_DIR is required when SELF_HOSTED_PUBLIC_LIBRARY is true. ' +
-      'Set it (see docker/.env.example) and run `pnpm import:bukshelf` once.',
+      'Set it to the directory that will hold SQLite, books, and covers.',
   );
 }
 

@@ -27,13 +27,10 @@ So the rough split is:
   Next.js App Router server endpoints (`route.ts`). These run on the server / edge runtime, not in the browser.
 
 - `apps/readest-app/src/pages/api`
-  Next.js Pages Router API endpoints. This is where the classic server handlers live, including sync, storage, send, DeepL, and user endpoints.
+  Remaining Next.js Pages Router endpoints, such as DeepL, KOReader compatibility, and local Send URL fetching.
 
 - `apps/readest-app/src/app/runtime-config.js`
   A server route that emits runtime JavaScript config for the client.
-
-- `apps/readest-app/workers`
-  Worker-side backend code outside the normal page UI tree. For example, `workers/send-email` is operational backend code.
 
 ### Mostly client-side directories
 

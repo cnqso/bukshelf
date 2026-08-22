@@ -2,8 +2,6 @@ export interface ReadestRuntimeConfig {
   brandName?: string;
   publicLibraryEnabled?: boolean;
   sourceCodeUrl?: string;
-  supabaseUrl?: string;
-  supabaseAnonKey?: string;
   apiBaseUrl?: string;
   bukshelfApiBaseUrl?: string;
   bukshelfAuthEnabled?: boolean;
@@ -53,13 +51,6 @@ export const getServerRuntimeConfig = (): ReadestRuntimeConfig => ({
   brandName: process.env['SELF_HOSTED_BRAND_NAME'] || 'Readest',
   publicLibraryEnabled: process.env['SELF_HOSTED_PUBLIC_LIBRARY']?.toLowerCase() === 'true',
   sourceCodeUrl: process.env['SELF_HOSTED_SOURCE_URL'] || 'https://github.com/readest/readest',
-  // Browser runtime config should prefer a public Supabase URL when provided.
-  // SUPABASE_URL remains as a backward-compatible fallback for non-split setups.
-  supabaseUrl:
-    process.env['SUPABASE_PUBLIC_URL'] ??
-    process.env['NEXT_PUBLIC_SUPABASE_URL'] ??
-    process.env['SUPABASE_URL'],
-  supabaseAnonKey: process.env['SUPABASE_ANON_KEY'] ?? process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'],
   apiBaseUrl:
     process.env['API_BASE_URL'] ??
     process.env['NEXT_PUBLIC_API_BASE_URL'] ??

@@ -1,16 +1,9 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, cleanup, act } from '@testing-library/react';
 
-vi.mock('@/utils/supabase', () => ({
-  supabase: {
-    auth: {
-      onAuthStateChange: vi.fn(() => ({
-        data: { subscription: { unsubscribe: vi.fn() } },
-      })),
-      refreshSession: vi.fn().mockResolvedValue(undefined),
-      signOut: vi.fn().mockResolvedValue(undefined),
-    },
-  },
+vi.mock('@/services/bukshelfAuthClient', () => ({
+  restoreBukshelfSession: vi.fn().mockRejectedValue(new Error('No session')),
+  logoutOfBukshelf: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('posthog-js', () => ({
