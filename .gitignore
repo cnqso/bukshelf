@@ -55,6 +55,7 @@ result*
 
 .playwright-mcp/
 .gstack
+.icon-preview/
 
 .claude/worktrees
 .claude/settings.local.json

@@ -4,8 +4,32 @@
   <dict>
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
+    <key>CFBundleDisplayName</key>
+    <string>$(PRODUCT_NAME)</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>$(PRODUCT_NAME)</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.12.1</string>
+    <key>CFBundleVersion</key>
+    <string>0.12.1</string>
     <key>NSLocalNetworkUsageDescription</key>
-    <string>Readest uses the local network to discover nearby devices and transfer books with LocalSend.</string>
+    <string>Bukshelf uses the local network to discover nearby devices and transfer books with LocalSend.</string>
+    <!-- Self-hosted Bukshelf servers may deliberately use plain HTTP. The
+         credentials are then unencrypted in transit, but TLS is the server
+         owner's choice rather than an application startup requirement. -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+      <key>NSAllowsArbitraryLoadsInWebContent</key>
+      <true/>
+    </dict>
     <key>CFBundleLocalizations</key>
     <array>
       <string>en</string>
@@ -51,12 +75,12 @@
          without this key TCC terminates the app on the first attempt (#5397)
          and iOS hides "Save Image" from the share sheet entirely. -->
     <key>NSPhotoLibraryAddUsageDescription</key>
-    <string>Readest needs access to save images from your books to your photo library.</string>
+    <string>Bukshelf needs access to save images from your books to your photo library.</string>
     <key>CFBundleURLTypes</key>
     <array>
       <dict>
         <key>CFBundleURLName</key>
-        <string>com.bilingify.readest</string>
+        <string>com.katamado.bukshelf.dev</string>
         <key>CFBundleURLSchemes</key>
         <array>
           <string>readest</string>
@@ -80,13 +104,15 @@
            tauri.conf.json. -->
       <dict>
         <key>CFBundleURLName</key>
-        <string>com.bilingify.readest.onedrive-oauth</string>
+        <string>com.katamado.bukshelf.dev.onedrive-oauth</string>
         <key>CFBundleURLSchemes</key>
         <array>
           <string>readest-onedrive</string>
         </array>
       </dict>
     </array>
+    <key>UILaunchStoryboardName</key>
+    <string>LaunchScreen</string>
     <key>UIApplicationSceneManifest</key>
     <dict>
       <key>UIApplicationSupportsMultipleScenes</key>
@@ -108,7 +134,7 @@
     </dict>
     <key>NSUbiquitousContainers</key>
     <dict>
-      <key>iCloud.com.bilingify.readest</key>
+      <key>iCloud.com.katamado.bukshelf.dev</key>
       <dict>
         <key>NSUbiquitousContainerIsDocumentScopePublic</key>
         <true/>

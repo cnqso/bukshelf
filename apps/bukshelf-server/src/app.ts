@@ -72,6 +72,18 @@ const corsHeaders = (origin?: string): Record<string, string> =>
       }
     : {};
 
+const APP_ORIGIN = /^(?:tauri:\/\/localhost|https?:\/\/tauri\.localhost(?::\d+)?)$/;
+
+/**
+ * WebKit treats a packaged Tauri app as a distinct origin. Reflect only the
+ * known local app origins; ordinary browsers remain restricted to the
+ * configured hosted frontend origin.
+ */
+const corsOriginFor = (request: Request, publicOrigin?: string): string | undefined => {
+  const requestOrigin = request.headers.get('origin');
+  return requestOrigin && APP_ORIGIN.test(requestOrigin) ? requestOrigin : publicOrigin;
+};
+
 const contentType = (pathname: string) => {
   const dot = pathname.lastIndexOf('.');
   return dot === -1 ? undefined : CONTENT_TYPES[pathname.slice(dot).toLowerCase()];
@@ -111,11 +123,12 @@ export const createHandler =
   (config: ServerConfig = {}) =>
   async (request: Request) => {
     const url = new URL(request.url);
+    const corsOrigin = corsOriginFor(request, config.publicOrigin);
 
     if (config.auth) {
       const authResponse = await handleAuthRoute(request, {
         auth: config.auth,
-        publicOrigin: config.publicOrigin,
+        publicOrigin: corsOrigin,
         secureCookies: config.secureCookies ?? url.protocol === 'https:',
       });
       if (authResponse) return authResponse;
@@ -124,7 +137,7 @@ export const createHandler =
         const fileResponse = await handleFileRoute(request, {
           auth: config.auth,
           files: config.files,
-          publicOrigin: config.publicOrigin,
+          publicOrigin: corsOrigin,
         });
         if (fileResponse) return fileResponse;
       }
@@ -134,7 +147,7 @@ export const createHandler =
           auth: config.auth,
           sync: config.sync,
           replicas: config.replicas,
-          publicOrigin: config.publicOrigin,
+          publicOrigin: corsOrigin,
         });
         if (syncResponse) return syncResponse;
       }
@@ -145,7 +158,7 @@ export const createHandler =
           usage: config.providers.usage,
           openRouter: config.providers.openRouter,
           soniox: config.providers.soniox,
-          publicOrigin: config.publicOrigin,
+          publicOrigin: corsOrigin,
         });
         if (providerResponse) return providerResponse;
       }
@@ -155,14 +168,14 @@ export const createHandler =
           auth: config.auth,
           shares: config.shares,
           objects: config.objects,
-          publicOrigin: config.publicOrigin,
+          publicOrigin: corsOrigin,
         });
         if (shareResponse) return shareResponse;
       }
     }
 
     if (url.pathname.startsWith('/api/public/library') && request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: corsHeaders(config.publicOrigin) });
+      return new Response(null, { status: 204, headers: corsHeaders(corsOrigin) });
     }
 
     if (
@@ -178,7 +191,7 @@ export const createHandler =
             headers: {
               'cache-control': 'public, max-age=30, stale-while-revalidate=120',
               'x-content-type-options': 'nosniff',
-              ...corsHeaders(config.publicOrigin),
+              ...corsHeaders(corsOrigin),
             },
           },
         );
@@ -187,7 +200,7 @@ export const createHandler =
         console.error('[public-library] Failed to list books', error);
         return json(
           { error: 'Failed to load public library' },
-          { status: 500, headers: corsHeaders(config.publicOrigin) },
+          { status: 500, headers: corsHeaders(corsOrigin) },
         );
       }
     }
@@ -195,24 +208,15 @@ export const createHandler =
     const coverMatch = url.pathname.match(/^\/api\/public\/library\/covers\/([^/]+)$/);
     if (coverMatch && (request.method === 'GET' || request.method === 'HEAD')) {
       if (!config.publicLibrary || !UUID.test(coverMatch[1]!)) {
-        return json(
-          { error: 'Not found' },
-          { status: 404, headers: corsHeaders(config.publicOrigin) },
-        );
+        return json({ error: 'Not found' }, { status: 404, headers: corsHeaders(corsOrigin) });
       }
       try {
         const cover = await config.publicLibrary.getCover(coverMatch[1]!);
         if (!cover)
-          return json(
-            { error: 'Not found' },
-            { status: 404, headers: corsHeaders(config.publicOrigin) },
-          );
+          return json({ error: 'Not found' }, { status: 404, headers: corsHeaders(corsOrigin) });
         const image = detectImageType(cover.body);
         if (!image)
-          return json(
-            { error: 'Not found' },
-            { status: 404, headers: corsHeaders(config.publicOrigin) },
-          );
+          return json({ error: 'Not found' }, { status: 404, headers: corsHeaders(corsOrigin) });
         return new Response(request.method === 'HEAD' ? null : new Uint8Array(cover.body), {
           headers: {
             'content-type': image.contentType,
@@ -222,14 +226,14 @@ export const createHandler =
             // The frontend sends COEP: require-corp, so an <img> pointing at
             // another origin is blocked unless the image opts in explicitly.
             'cross-origin-resource-policy': 'cross-origin',
-            ...corsHeaders(config.publicOrigin),
+            ...corsHeaders(corsOrigin),
           },
         });
       } catch (error) {
         console.error('[public-library] Failed to load cover', error);
         return json(
           { error: 'Failed to load cover' },
-          { status: 500, headers: corsHeaders(config.publicOrigin) },
+          { status: 500, headers: corsHeaders(corsOrigin) },
         );
       }
     }

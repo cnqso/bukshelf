@@ -28,7 +28,7 @@ export const getRuntimeConfig = () =>
 export const getBrandName = () =>
   typeof window === 'undefined'
     ? process.env['SELF_HOSTED_BRAND_NAME'] || 'Readest'
-    : getRuntimeConfig()?.brandName || 'Readest';
+    : getRuntimeConfig()?.brandName || (isMobileTauriClient() ? 'Bukshelf' : 'Readest');
 
 export const getSourceCodeUrl = () =>
   typeof window === 'undefined'
@@ -39,13 +39,15 @@ export const getBukshelfApiBaseUrl = () =>
   (
     (typeof window === 'undefined'
       ? process.env['BUKSHELF_API_PUBLIC_URL']
-      : getRuntimeConfig()?.bukshelfApiBaseUrl) || ''
+      : isMobileTauriClient()
+        ? getSelectedBukshelfServerUrl()
+        : getRuntimeConfig()?.bukshelfApiBaseUrl) || ''
   ).replace(/\/$/, '');
 
 export const isBukshelfAuthEnabled = () =>
   typeof window === 'undefined'
     ? process.env['BUKSHELF_AUTH_ENABLED']?.toLowerCase() === 'true'
-    : getRuntimeConfig()?.bukshelfAuthEnabled === true;
+    : isMobileTauriClient() || getRuntimeConfig()?.bukshelfAuthEnabled === true;
 
 export const getServerRuntimeConfig = (): ReadestRuntimeConfig => ({
   brandName: process.env['SELF_HOSTED_BRAND_NAME'] || 'Readest',
@@ -92,3 +94,4 @@ export const getServerRuntimeConfig = (): ReadestRuntimeConfig => ({
   fontBaseUrl:
     process.env['FONT_BASE_URL'] || process.env['NEXT_PUBLIC_FONT_BASE_URL'] || undefined,
 });
+import { getSelectedBukshelfServerUrl, isMobileTauriClient } from './mobileServer';

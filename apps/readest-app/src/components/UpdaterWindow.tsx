@@ -27,7 +27,6 @@ import {
   READEST_UPDATER_PUBKEY,
 } from '@/services/constants';
 import Dialog from '@/components/Dialog';
-import Link from './Link';
 
 interface ReleaseNotes {
   releases: Record<
@@ -602,29 +601,7 @@ export const UpdaterContent = ({
                 </h2>
 
                 {changelogs.length > 0 && semver.gt(changelogs[0]!.version, currentVersion) ? (
-                  <div className='flex gap-2'>
-                    {(appService?.isIOSApp || appService?.isMacOSApp) && (
-                      <Link
-                        href='https://apps.apple.com/app/id6738622779'
-                        target='_blank'
-                        rel='noopener noreferrer'
-                        className='btn btn-primary btn-sm'
-                      >
-                        {_('Check Update')}
-                      </Link>
-                    )}
-
-                    {appService?.isAndroidApp && (
-                      <Link
-                        href='https://play.google.com/store/apps/details?id=com.bilingify.readest'
-                        target='_blank'
-                        rel='noopener noreferrer'
-                        className='btn btn-primary btn-sm'
-                      >
-                        {_('Check Update')}
-                      </Link>
-                    )}
-                  </div>
+                  <p className='text-sm font-bold'>{_('Update available')}</p>
                 ) : (
                   <div className='flex'>
                     <p className='text-sm font-bold'>{_('Already the latest version')}</p>

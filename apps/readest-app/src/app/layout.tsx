@@ -8,7 +8,6 @@ import Providers from '@/components/Providers';
 import '../styles/globals.css';
 
 const brandName = process.env['SELF_HOSTED_BRAND_NAME'] || 'Readest';
-const isWhiteLabeled = brandName !== 'Readest';
 const url = process.env['SITE_URL'] || 'https://web.readest.com/';
 const title = `${brandName} — Your cloud bookshelf`;
 const description =
@@ -31,10 +30,12 @@ export const metadata: Metadata = {
     },
   ],
   icons: {
-    icon: isWhiteLabeled
-      ? [{ url: '/bukshelf-icon.svg', type: 'image/svg+xml' }]
-      : [{ url: '/icon.png' }, { url: '/favicon.ico' }],
-    apple: isWhiteLabeled ? undefined : [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
+    icon: [
+      { url: '/icon-192.png', type: 'image/png', sizes: '192x192' },
+      { url: '/icon-512.png', type: 'image/png', sizes: '512x512' },
+      { url: '/favicon.ico' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
   },
   appleWebApp: {
     capable: true,

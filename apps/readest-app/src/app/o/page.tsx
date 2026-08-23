@@ -25,7 +25,7 @@ const detectPlatform = (): Platform => {
   return 'desktop';
 };
 
-const ANDROID_PACKAGE = 'com.bilingify.readest';
+const ANDROID_PACKAGE = 'com.katamado.bukshelf.dev';
 const FALLBACK_TIMEOUT_MS = 1500;
 const DESKTOP_FALLBACK_DELAY_MS = 1000;
 

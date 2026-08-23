@@ -1,4 +1,4 @@
-package com.bilingify.readest
+package com.katamado.bukshelf.dev
 
 import android.os.Build
 import android.os.Bundle

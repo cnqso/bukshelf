@@ -1,5 +1,7 @@
 import type { AuthUser } from '@/types/auth';
+import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 import { getBukshelfApiBaseUrl } from './runtimeConfig';
+import { isMobileTauriClient } from './mobileServer';
 
 interface BukshelfSessionResponse {
   accessToken: string;
@@ -11,8 +13,11 @@ export interface BukshelfAuthStatus {
   configured: boolean;
 }
 
-const authRequest = async (path: string, init: RequestInit = {}) => {
-  const response = await fetch(`${getBukshelfApiBaseUrl()}${path}`, {
+const authRequest = async (path: string, init: RequestInit = {}, serverUrl?: string) => {
+  const baseUrl = (serverUrl || getBukshelfApiBaseUrl()).replace(/\/$/, '');
+  if (!baseUrl) throw new Error('Choose a Bukshelf server first');
+  const fetchImpl = isMobileTauriClient() ? tauriFetch : globalThis.fetch;
+  const response = await fetchImpl(`${baseUrl}${path}`, {
     ...init,
     credentials: 'include',
     headers: {
@@ -37,8 +42,8 @@ export const loginToBukshelf = async (password: string): Promise<BukshelfSession
   return body as BukshelfSessionResponse;
 };
 
-export const getBukshelfAuthStatus = async (): Promise<BukshelfAuthStatus> => {
-  const body = await authRequest('/api/auth/status');
+export const getBukshelfAuthStatus = async (serverUrl?: string): Promise<BukshelfAuthStatus> => {
+  const body = await authRequest('/api/auth/status', {}, serverUrl);
   if (typeof body?.configured !== 'boolean') throw new Error('Invalid setup status response');
   return body as BukshelfAuthStatus;
 };

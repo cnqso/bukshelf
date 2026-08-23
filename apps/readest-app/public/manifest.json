@@ -7,17 +7,12 @@
   "description": "Readest is an open-source eBook reader supporting EPUB, PDF, and sync across devices.",
   "icons": [
     {
-      "src": "/icon.png",
+      "src": "/icon-192.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "/icon.png",
-      "type": "image/png",
-      "sizes": "256x256"
-    },
-    {
-      "src": "/icon.png",
+      "src": "/icon-512.png",
       "type": "image/png",
       "sizes": "512x512"
     }

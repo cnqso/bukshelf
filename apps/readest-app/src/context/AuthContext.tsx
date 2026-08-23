@@ -12,6 +12,7 @@ import {
 import type { AuthUser } from '@/types/auth';
 import posthog from 'posthog-js';
 import { logoutOfBukshelf, restoreBukshelfSession } from '@/services/bukshelfAuthClient';
+import { getBukshelfApiBaseUrl } from '@/services/runtimeConfig';
 
 interface AuthContextType {
   token: string | null;
@@ -55,6 +56,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
+    if (!getBukshelfApiBaseUrl()) {
+      syncSession(null);
+      return;
+    }
     void restoreBukshelfSession(localStorage.getItem('token'))
       .then(({ accessToken, user }) => syncSession({ accessToken, user }))
       .catch(() => syncSession(null));

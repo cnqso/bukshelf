@@ -574,6 +574,9 @@ importers:
       serwist:
         specifier: ^9.3.0
         version: 9.5.11(browserslist@4.28.2)(typescript@5.9.3)
+      sharp:
+        specifier: '>=0.35.0 <0.36'
+        version: 0.35.3(@types/node@22.19.19)
       tailwindcss:
         specifier: ^3.4.18
         version: 3.4.19(tsx@4.21.0)(yaml@2.9.0)
@@ -14688,7 +14691,7 @@ snapshots:
 
   make-dir@4.0.0:
     dependencies:
-      semver: 7.8.0
+      semver: 7.8.5
 
   mammoth@1.12.0:
     dependencies:
@@ -15383,7 +15386,7 @@ snapshots:
   normalize-package-data@7.0.1:
     dependencies:
       hosted-git-info: 8.1.0
-      semver: 7.8.0
+      semver: 7.8.5
       validate-npm-package-license: 3.0.4
 
   normalize-path@3.0.0: {}

@@ -2,6 +2,7 @@ import type { SystemSettings } from '@/types/settings';
 import type { UserPlan } from '@/types/quota';
 import { isCloudSyncAllowed } from '@/utils/access';
 import type { FileSyncBackendKind } from '@/services/sync/file/providerRegistry';
+import { getBukshelfApiBaseUrl } from '@/services/runtimeConfig';
 
 /**
  * The cloud sync provider kind for library data (book files, book rows,
@@ -58,7 +59,7 @@ export const hasAnyThirdPartyEnabled = (settings: SystemSettings | null | undefi
   getEnabledFileSyncBackends(settings).length > 0;
 
 /**
- * Whether Readest Cloud syncs the library channels on this device.
+ * Whether the primary server syncs the library channels on this device.
  *
  * The `??` is load-bearing: an absent `readestCloud.enabled` reproduces the
  * pre-#5062 exclusive derivation (Readest Cloud owned the library exactly when
@@ -66,9 +67,13 @@ export const hasAnyThirdPartyEnabled = (settings: SystemSettings | null | undefi
  * and disconnecting the last third-party provider still falls back to Readest
  * Cloud. Once the user touches a Cloud Sync checkbox the flag is explicit and
  * wins.
+ * A configured Bukshelf origin is different: connecting the app to a
+ * self-hosted server is itself the sync opt-in. Legacy Readest provider
+ * preferences must not leave a newly connected phone with an empty shelf.
  */
 export const isReadestCloudEnabled = (settings: SystemSettings | null | undefined): boolean =>
-  settings?.readestCloud?.enabled ?? !hasAnyThirdPartyEnabled(settings);
+  Boolean(getBukshelfApiBaseUrl()) ||
+  (settings?.readestCloud?.enabled ?? !hasAnyThirdPartyEnabled(settings));
 
 /** Every provider syncing the library on this device, Readest Cloud first. */
 export const getCloudSyncProviders = (

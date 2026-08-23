@@ -4,7 +4,7 @@
 <dict>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.com.bilingify.readest</string>
+		<string>group.com.katamado.bukshelf.dev</string>
 	</array>
 </dict>
 </plist>

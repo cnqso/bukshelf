@@ -91,6 +91,31 @@ describe('Bukshelf server', () => {
     store.close();
   });
 
+  test('reflects a packaged Tauri origin for authenticated API preflights', async () => {
+    const store = new AuthStore(':memory:');
+    store.createOwner({ id: 'owner', email: 'owner@example.com', passwordHash: 'unused' });
+    const auth = new AuthService(store, 'test-secret-that-is-deliberately-over-thirty-two-bytes');
+    const handler = createHandler({
+      auth,
+      sync: new SyncStore(store.database),
+      replicas: new ReplicaStore(store.database),
+      publicOrigin: 'https://books.example',
+    });
+    const response = await handler(
+      new Request('http://localhost/api/sync?since=0&type=books', {
+        method: 'OPTIONS',
+        headers: {
+          origin: 'tauri://localhost',
+          'access-control-request-method': 'GET',
+          'access-control-request-headers': 'authorization',
+        },
+      }),
+    );
+    expect(response.status).toBe(204);
+    expect(response.headers.get('access-control-allow-origin')).toBe('tauri://localhost');
+    store.close();
+  });
+
   test('advertises and serves the public library when configured', async () => {
     const handler = createHandler({ publicLibrary, publicOrigin: 'http://localhost:43171' });
     const discovery = await handler(new Request('http://localhost/.well-known/bukshelf'));

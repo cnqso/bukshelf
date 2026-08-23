@@ -6,13 +6,9 @@ import LibraryPage from '@/app/library/page';
 import PublicLibraryPage from '@/components/PublicLibraryPage';
 import { useAuth } from '@/context/AuthContext';
 import { getBukshelfAuthStatus } from '@/services/bukshelfAuthClient';
-import { isBukshelfAuthEnabled } from '@/services/runtimeConfig';
+import { getRuntimeConfig, isBukshelfAuthEnabled } from '@/services/runtimeConfig';
 
-export default function HomePageContent({
-  publicLibraryEnabled,
-}: {
-  publicLibraryEnabled: boolean;
-}) {
+export default function HomePageContent() {
   const { token, user } = useAuth();
   const router = useRouter();
   const [isHydrated, setIsHydrated] = useState(false);
@@ -27,10 +23,11 @@ export default function HomePageContent({
       .catch(() => undefined);
   }, [router]);
 
-  // Server rendering always emits the public facade. On hydration we keep it
-  // for signed-out visitors, while a stored owner session switches to the full
-  // reader without changing the public API's access boundary.
-  if (publicLibraryEnabled && (!isHydrated || !token || !user)) {
+  // Keep the static Tauri shell and hosted SSR shell empty until runtime config
+  // and local auth state are available, then choose public facade or owner UI.
+  if (!isHydrated) return null;
+  const publicLibraryEnabled = getRuntimeConfig()?.publicLibraryEnabled === true;
+  if (publicLibraryEnabled && (!token || !user)) {
     return <PublicLibraryPage />;
   }
   return <LibraryPage />;

@@ -236,3 +236,35 @@ IAP bookkeeping, and Email-to-Readest worker/inbox were deleted with it. The
 remaining Next.js routes (translation providers, metadata search, OPDS
 proxying, Hardcover, Edge TTS, and local Send URL fetching) have no external
 database coupling and can move into Bun one at a time.
+
+## Native Client Direction
+
+- iOS and Android are direct-distribution clients for a user-selected Bukshelf
+  server. App Store and Play Store publishing are permanently out of scope.
+- Both `http://` and `https://` server URLs are valid. TLS is recommended on
+  untrusted networks, but Bukshelf never makes certificates a startup requirement.
+- Temporary offline reading may use downloaded books; a separate serverless
+  product mode is not a beta requirement.
+
+## Brand Assets
+
+Preview any PNG, JPEG, or other Sharp-readable image without changing tracked
+assets: `pnpm icons:preview -- <image>`. The default `cover` treatment zooms and
+center-crops the image to fill the square; `--fit contain` preserves all content.
+Apply the selected image everywhere with `pnpm icons:apply -- <image>`. That one
+command writes the canonical source plus web/PWA/favicon, desktop, Windows,
+macOS, iOS, and Android icon sizes. Generated previews live in `.icon-preview/`.
+
+The shared mobile client now persists one user-selected Bukshelf URL, accepts
+HTTP or HTTPS, probes it before saving, and gates every native route behind
+server selection plus owner authentication. Native auth uses Tauri HTTP rather
+than browser CORS, while web continues using browser fetch. The Tauri frontend
+is statically exportable again.
+
+Native identity is centralized in `apps/readest-app/branding/native-identity.json`.
+The current `com.katamado.bukshelf.dev` identifier is explicitly provisional;
+no Apple App ID or team is committed. Change the name, publisher, or identifier
+everywhere with `pnpm native:identity -- --name <name> --publisher <publisher>
+--bundle-id <reverse.domain.id>`. Apple signing waits for the Katamado team ID.
+Run `pnpm native:doctor` before an iOS build to verify Rust, Cargo, both iOS
+Rust targets, and full Xcode.

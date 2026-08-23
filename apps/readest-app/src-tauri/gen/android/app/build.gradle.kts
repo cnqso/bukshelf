@@ -16,14 +16,15 @@ val tauriProperties = Properties().apply {
 
 android {
     compileSdk = 36
-    namespace = "com.bilingify.readest"
+    namespace = "com.katamado.bukshelf.dev"
     val keystorePropertiesFile = rootProject.file("keystore.properties")
     val keystoreProperties = Properties()
     if (keystorePropertiesFile.exists()) {
         keystoreProperties.load(FileInputStream(keystorePropertiesFile))
     }
     defaultConfig {
-        manifestPlaceholders["usesCleartextTraffic"] = "false"
+        // A self-hosted Bukshelf URL may intentionally use plain HTTP.
+        manifestPlaceholders["usesCleartextTraffic"] = "true"
         // Sentry DSN precedence: environment (CI secret / shell export) wins,
         // else the gitignored .env.local, else .env at the app root (../../../
         // from this module). Empty => Sentry auto-init no-ops.
@@ -38,7 +39,7 @@ android {
                         ?.substringAfter("=")?.trim()?.trim('"', '\'')?.takeIf { it.isNotEmpty() }
                 }
             ?: ""
-        applicationId = "com.bilingify.readest"
+        applicationId = "com.katamado.bukshelf.dev"
         minSdk = 26
         targetSdk = 36
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
@@ -58,7 +59,6 @@ android {
     }
     buildTypes {
         getByName("debug") {
-            manifestPlaceholders["usesCleartextTraffic"] = "true"
             isDebuggable = true
             isJniDebuggable = true
             isMinifyEnabled = false

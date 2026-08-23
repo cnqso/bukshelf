@@ -59,8 +59,17 @@ jobs:
       - name: Lint and type-check the frontend
         run: pnpm --dir apps/readest-app lint
 
+      - name: Build the native mobile frontend
+        run: pnpm --dir apps/readest-app build
+
       - name: Test the frontend
         run: pnpm --dir apps/readest-app test -- --run
+
+      - name: Test the cross-platform icon pipeline
+        run: pnpm --dir apps/readest-app test:icons
+
+      - name: Test the provisional native identity
+        run: pnpm --dir apps/readest-app test:native-identity
 
       - name: Test the unified development server
         run: pnpm test:e2e:bukshelf

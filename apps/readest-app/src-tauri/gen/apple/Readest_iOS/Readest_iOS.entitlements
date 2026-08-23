@@ -12,13 +12,13 @@
 	</array>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.com.bilingify.readest</string>
+		<string>group.com.katamado.bukshelf.dev</string>
 	</array>
 	<key>com.apple.developer.carplay-audio</key>
 	<true/>
 	<key>com.apple.developer.icloud-container-identifiers</key>
 	<array>
-		<string>iCloud.com.bilingify.readest</string>
+		<string>iCloud.com.katamado.bukshelf.dev</string>
 	</array>
 	<key>com.apple.developer.icloud-services</key>
 	<array>
@@ -26,7 +26,7 @@
 	</array>
 	<key>com.apple.developer.ubiquity-container-identifiers</key>
 	<array>
-		<string>iCloud.com.bilingify.readest</string>
+		<string>iCloud.com.katamado.bukshelf.dev</string>
 	</array>
 </dict>
 </plist>

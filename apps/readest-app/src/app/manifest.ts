@@ -4,7 +4,6 @@ export const dynamic = 'force-dynamic';
 
 export default function manifest(): MetadataRoute.Manifest {
   const brandName = process.env['SELF_HOSTED_BRAND_NAME'] || 'Readest';
-  const icon = brandName === 'Readest' ? '/icon.png' : '/bukshelf-icon.svg';
   return {
     name: brandName,
     short_name: brandName,
@@ -15,9 +14,14 @@ export default function manifest(): MetadataRoute.Manifest {
     description: `${brandName} is a private, self-hosted ebook library.`,
     icons: [
       {
-        src: icon,
-        type: icon.endsWith('.svg') ? 'image/svg+xml' : 'image/png',
-        sizes: 'any',
+        src: '/icon-192.png',
+        type: 'image/png',
+        sizes: '192x192',
+      },
+      {
+        src: '/icon-512.png',
+        type: 'image/png',
+        sizes: '512x512',
       },
     ],
   };
