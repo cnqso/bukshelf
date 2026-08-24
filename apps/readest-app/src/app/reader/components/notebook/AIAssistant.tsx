@@ -148,7 +148,12 @@ const AIAssistant = ({ bookKey }: AIAssistantProps) => {
         cancelled = true;
       };
     }
-    void extractBookText(bookData.bookDoc).then((extracted) => {
+    // Do not materialize every chapter in a large EPUB on memory-constrained
+    // mobile WebViews. The downstream prompt cannot use more than this budget
+    // anyway, so opening later chapter documents only risks a renderer reload.
+    void extractBookText(bookData.bookDoc, {
+      maxCharacters: DEFAULT_BOOK_CONTEXT_CHARACTERS,
+    }).then((extracted) => {
       if (!cancelled) {
         setBook(extracted);
         setLoading(false);

@@ -46,15 +46,25 @@ const chapterTitle = (toc: TocItem[], sectionIndex: number): string => {
   return `Section ${sectionIndex + 1}`;
 };
 
-export const extractBookText = async (document: BookDocument): Promise<LongContextBook> => {
+export const extractBookText = async (
+  document: BookDocument,
+  options: { maxCharacters?: number } = {},
+): Promise<LongContextBook> => {
   const sections: LongContextSection[] = [];
   let totalCharacters = 0;
+  let truncated = false;
   const toc = document.toc ?? [];
+  const maxCharacters = Math.max(0, options.maxCharacters ?? Number.POSITIVE_INFINITY);
 
   for (const [index, section] of (document.sections ?? []).entries()) {
     if (section.linear === 'no') continue;
+    if (totalCharacters >= maxCharacters) {
+      truncated = true;
+      break;
+    }
     try {
-      const text = extractDocumentText(await section.createDocument());
+      const fullText = extractDocumentText(await section.createDocument());
+      const text = fullText.slice(0, maxCharacters - totalCharacters);
       if (!text) continue;
       sections.push({
         index,
@@ -62,12 +72,20 @@ export const extractBookText = async (document: BookDocument): Promise<LongConte
         text,
       });
       totalCharacters += text.length;
+      if (text.length < fullText.length) {
+        truncated = true;
+        break;
+      }
+      // Some EPUB parsers resolve createDocument synchronously. Yield between
+      // chapters so mobile WebViews can paint the loader and reclaim detached
+      // Documents instead of processing a long book in one giant task.
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
     } catch {
       // A malformed chapter should not prevent discussion of the rest of the book.
     }
   }
 
-  return { sections, totalCharacters };
+  return { sections, totalCharacters: truncated ? totalCharacters + 1 : totalCharacters };
 };
 
 const escapeAttribute = (value: string): string =>

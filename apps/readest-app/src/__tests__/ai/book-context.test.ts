@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import {
   extractBookText,
   renderBookContext,
@@ -39,6 +39,28 @@ describe('Reader AI long book context', () => {
     ]);
     expect(JSON.stringify(book)).not.toContain('bad()');
     expect(JSON.stringify(book)).not.toContain('Contents');
+  });
+
+  test('stops opening chapters once the extraction budget is full', async () => {
+    const unopened = vi.fn(async () => documentFrom('<p>Must not be opened.</p>'));
+    const book = await extractBookText(
+      {
+        sections: [
+          {
+            id: 'one',
+            size: 100,
+            linear: 'yes',
+            createDocument: async () => documentFrom('<p>abcdefghij</p>'),
+          },
+          { id: 'two', size: 100, linear: 'yes', createDocument: unopened },
+        ],
+      },
+      { maxCharacters: 5 },
+    );
+
+    expect(book.sections).toEqual([{ index: 0, title: 'Section 1', text: 'abcde' }]);
+    expect(book.totalCharacters).toBe(6);
+    expect(unopened).not.toHaveBeenCalled();
   });
 
   test('renders literal chapter-marked text and enforces the context budget', () => {
