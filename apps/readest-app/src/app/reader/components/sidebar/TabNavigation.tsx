@@ -8,6 +8,8 @@ import { LuMessageSquare } from 'react-icons/lu';
 import { useEnv } from '@/context/EnvContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useSettingsStore } from '@/store/settingsStore';
+import { getEffectiveAISettings } from '@/services/ai/effectiveSettings';
+import { useRuntimeConfig } from '@/hooks/useRuntimeConfig';
 import { isForcedMobileLayout } from '../../utils/mobileLayout';
 
 const TabNavigation: React.FC<{
@@ -17,7 +19,8 @@ const TabNavigation: React.FC<{
   const _ = useTranslation();
   const { appService } = useEnv();
   const { settings } = useSettingsStore();
-  const aiEnabled = settings?.aiSettings?.enabled ?? false;
+  const runtimeConfig = useRuntimeConfig();
+  const aiEnabled = getEffectiveAISettings(settings?.aiSettings, runtimeConfig).enabled;
 
   const forceMobileLayout = isForcedMobileLayout(appService?.isMobile);
   const isMobile = forceMobileLayout || window.innerWidth < 640 || window.innerHeight < 640;

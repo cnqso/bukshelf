@@ -19,6 +19,7 @@ import {
   normalizeBukshelfServerUrl,
   setSelectedBukshelfServerUrl,
 } from '@/services/mobileServer';
+import { discoverBukshelfServer } from '@/services/bukshelfDiscovery';
 
 const safeRedirect = (redirect: string | null) =>
   redirect?.startsWith('/') && !redirect.startsWith('//') ? redirect : '/library';
@@ -57,6 +58,9 @@ export default function SingleOwnerAuthPage() {
       setServerUrl(normalized);
       setConfigured(status.configured);
       setServerConnected(true);
+      void discoverBukshelfServer(normalized).catch((error: unknown) =>
+        console.warn('[bukshelf] Capability discovery failed', error),
+      );
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not connect to this server');
     } finally {

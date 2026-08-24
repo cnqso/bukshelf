@@ -24,7 +24,7 @@ import {
   DEFAULT_EINK_VIEW_SETTINGS,
   DEFAULT_VIEW_SETTINGS_CONFIG,
 } from './constants';
-import { DEFAULT_AI_SETTINGS } from './ai/constants';
+import { getEffectiveAISettings } from './ai/effectiveSettings';
 import { getTargetLang, isCJKEnv } from '@/utils/misc';
 import { safeLoadJSON, safeSaveJSON } from './persistence';
 import { getRuntimeConfig } from './runtimeConfig';
@@ -158,20 +158,8 @@ export async function loadSettings(ctx: Context): Promise<SystemSettings> {
     ...getDefaultViewSettings(ctx),
     ...settings.globalViewSettings,
   };
-  settings.aiSettings = {
-    ...DEFAULT_AI_SETTINGS,
-    ...settings.aiSettings,
-  };
+  settings.aiSettings = getEffectiveAISettings(settings.aiSettings);
   const runtimeConfig = getRuntimeConfig();
-  if (runtimeConfig?.openRouterServerEnabled) {
-    settings.aiSettings = {
-      ...settings.aiSettings,
-      enabled: true,
-      provider: 'openrouter',
-      openrouterApiKey: undefined,
-      openrouterModel: runtimeConfig.openRouterChatModel,
-    };
-  }
   if (runtimeConfig?.privacyMode) settings.telemetryEnabled = false;
 
   settings.localBooksDir = await ctx.fs.getPrefix('Books');

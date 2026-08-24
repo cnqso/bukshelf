@@ -25,6 +25,22 @@ declare global {
 export const getRuntimeConfig = () =>
   typeof window === 'undefined' ? undefined : window.__READEST_RUNTIME_CONFIG;
 
+const runtimeConfigListeners = new Set<() => void>();
+
+export const setRuntimeConfig = (config: ReadestRuntimeConfig | undefined) => {
+  if (typeof window === 'undefined') return;
+  window.__READEST_RUNTIME_CONFIG = config;
+  runtimeConfigListeners.forEach((listener) => listener());
+};
+
+export const mergeRuntimeConfig = (config: ReadestRuntimeConfig) =>
+  setRuntimeConfig({ ...getRuntimeConfig(), ...config });
+
+export const subscribeRuntimeConfig = (listener: () => void) => {
+  runtimeConfigListeners.add(listener);
+  return () => runtimeConfigListeners.delete(listener);
+};
+
 export const getBrandName = () =>
   typeof window === 'undefined'
     ? process.env['SELF_HOSTED_BRAND_NAME'] || 'Readest'

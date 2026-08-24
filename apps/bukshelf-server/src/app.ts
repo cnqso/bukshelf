@@ -243,22 +243,30 @@ export const createHandler =
     }
 
     if (url.pathname === '/.well-known/bukshelf') {
-      return json({
-        name: 'Bukshelf',
-        version: BUKSHELF_VERSION,
-        apiVersion: '0.1',
-        mode: 'single-owner',
-        capabilities: {
-          authentication: Boolean(config.auth),
-          library: Boolean(config.publicLibrary),
-          sync: Boolean(config.auth && config.sync && config.replicas),
-          files: Boolean(config.auth && config.files),
-          readerAI: Boolean(config.auth && config.providers?.openRouter?.configured),
-          textToSpeech: Boolean(config.auth && config.providers?.soniox?.configured),
-          usageMetering: Boolean(config.auth && config.providers),
-          sharing: Boolean(config.auth && config.shares && config.objects),
+      return json(
+        {
+          name: 'Bukshelf',
+          version: BUKSHELF_VERSION,
+          apiVersion: '0.1',
+          mode: 'single-owner',
+          capabilities: {
+            authentication: Boolean(config.auth),
+            library: Boolean(config.publicLibrary),
+            sync: Boolean(config.auth && config.sync && config.replicas),
+            files: Boolean(config.auth && config.files),
+            readerAI: Boolean(config.auth && config.providers?.openRouter?.configured),
+            textToSpeech: Boolean(config.auth && config.providers?.soniox?.configured),
+            usageMetering: Boolean(config.auth && config.providers),
+            sharing: Boolean(config.auth && config.shares && config.objects),
+          },
+          models: {
+            readerAI: config.providers?.openRouter?.configured
+              ? config.providers.openRouter.chatModel
+              : undefined,
+          },
         },
-      });
+        { headers: corsHeaders(corsOrigin) },
+      );
     }
 
     if (request.method !== 'GET' && request.method !== 'HEAD') {

@@ -13,6 +13,7 @@ import type { AuthUser } from '@/types/auth';
 import posthog from 'posthog-js';
 import { logoutOfBukshelf, restoreBukshelfSession } from '@/services/bukshelfAuthClient';
 import { getBukshelfApiBaseUrl } from '@/services/runtimeConfig';
+import { discoverBukshelfServer } from '@/services/bukshelfDiscovery';
 
 interface AuthContextType {
   token: string | null;
@@ -56,11 +57,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    if (!getBukshelfApiBaseUrl()) {
+    const serverUrl = getBukshelfApiBaseUrl();
+    if (!serverUrl) {
       syncSession(null);
       return;
     }
-    void restoreBukshelfSession(localStorage.getItem('token'))
+    void discoverBukshelfServer(serverUrl)
+      .catch((error: unknown) => console.warn('[bukshelf] Capability discovery failed', error))
+      .then(() => restoreBukshelfSession(localStorage.getItem('token')))
       .then(({ accessToken, user }) => syncSession({ accessToken, user }))
       .catch(() => syncSession(null));
   }, [syncSession]);

@@ -6,6 +6,8 @@ import { useReaderStore } from '@/store/readerStore';
 import { useSidebarStore } from '@/store/sidebarStore';
 import { useBookDataStore } from '@/store/bookDataStore';
 import { useSettingsStore } from '@/store/settingsStore';
+import { getEffectiveAISettings } from '@/services/ai/effectiveSettings';
+import { useRuntimeConfig } from '@/hooks/useRuntimeConfig';
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react';
 import 'overlayscrollbars/overlayscrollbars.css';
 
@@ -27,7 +29,8 @@ const SidebarContent: React.FC<{
   const [fade, setFade] = useState(false);
   const [targetTab, setTargetTab] = useState(activeTab);
   const isMobile = window.innerWidth < 640 || window.innerHeight < 640;
-  const aiEnabled = settings?.aiSettings?.enabled ?? false;
+  const runtimeConfig = useRuntimeConfig();
+  const aiEnabled = getEffectiveAISettings(settings?.aiSettings, runtimeConfig).enabled;
 
   useEffect(() => {
     if (!sideBarBookKey) return;

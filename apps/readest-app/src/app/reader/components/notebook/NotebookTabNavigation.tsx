@@ -6,6 +6,8 @@ import { useEnv } from '@/context/EnvContext';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useSettingsStore } from '@/store/settingsStore';
 import { NotebookTab } from '@/store/notebookStore';
+import { getEffectiveAISettings } from '@/services/ai/effectiveSettings';
+import { useRuntimeConfig } from '@/hooks/useRuntimeConfig';
 
 interface NotebookTabNavigationProps {
   activeTab: NotebookTab;
@@ -19,7 +21,8 @@ const NotebookTabNavigation: React.FC<NotebookTabNavigationProps> = ({
   const _ = useTranslation();
   const { appService } = useEnv();
   const { settings } = useSettingsStore();
-  const aiEnabled = settings?.aiSettings?.enabled ?? false;
+  const runtimeConfig = useRuntimeConfig();
+  const aiEnabled = getEffectiveAISettings(settings?.aiSettings, runtimeConfig).enabled;
 
   const tabs: NotebookTab[] = aiEnabled ? ['notes', 'ai'] : [];
 

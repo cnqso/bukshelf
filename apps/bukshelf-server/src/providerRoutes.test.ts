@@ -148,4 +148,17 @@ describe('provider routes HTTP contract', () => {
       usageMetering: true,
     });
   });
+
+  test('advertises the Reader AI model to native clients', async () => {
+    handler = buildHandler({ openRouter: true });
+    const response = await handler(
+      new Request('http://localhost/.well-known/bukshelf', {
+        headers: { origin: 'http://tauri.localhost' },
+      }),
+    );
+    const body = await response.json();
+
+    expect(body.models.readerAI).toBe('google/gemini-3.6-flash');
+    expect(response.headers.get('access-control-allow-origin')).toBe('http://tauri.localhost');
+  });
 });

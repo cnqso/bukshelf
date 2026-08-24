@@ -22,6 +22,8 @@ import {
   type LongContextBook,
 } from '@/services/ai/bookContext';
 import type { AIMessage, AISettings } from '@/services/ai/types';
+import { getEffectiveAISettings } from '@/services/ai/effectiveSettings';
+import { useRuntimeConfig } from '@/hooks/useRuntimeConfig';
 import { Thread } from '@/components/assistant/Thread';
 
 const convertToExportedMessages = (
@@ -132,14 +134,15 @@ const AIAssistant = ({ bookKey }: AIAssistantProps) => {
   const progress = useBookProgress(bookKey);
   const [book, setBook] = useState<LongContextBook | null>(null);
   const [loading, setLoading] = useState(true);
-  const aiSettings = settings?.aiSettings;
+  const runtimeConfig = useRuntimeConfig();
+  const aiSettings = getEffectiveAISettings(settings?.aiSettings, runtimeConfig);
   const currentPage = progress?.pageinfo?.current ?? 0;
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setBook(null);
-    if (!aiSettings?.enabled || !bookData?.bookDoc) {
+    if (!aiSettings.enabled || !bookData?.bookDoc) {
       setLoading(false);
       return () => {
         cancelled = true;
@@ -154,7 +157,7 @@ const AIAssistant = ({ bookKey }: AIAssistantProps) => {
     return () => {
       cancelled = true;
     };
-  }, [aiSettings?.enabled, bookData?.bookDoc]);
+  }, [aiSettings.enabled, bookData?.bookDoc]);
 
   const context = useMemo(
     () =>
@@ -167,7 +170,7 @@ const AIAssistant = ({ bookKey }: AIAssistantProps) => {
     [book, aiSettings?.spoilerProtection, currentPage],
   );
 
-  if (!aiSettings?.enabled) {
+  if (!aiSettings.enabled) {
     return (
       <div className='flex h-full items-center justify-center p-4'>
         <p className='text-muted-foreground text-sm'>{_('Enable AI in Settings')}</p>

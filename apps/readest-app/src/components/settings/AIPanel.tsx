@@ -11,9 +11,10 @@ import {
   type OpenRouterModelInfo,
 } from '@/services/ai/providers/OpenRouterProvider';
 import { DEFAULT_AI_SETTINGS, GATEWAY_MODELS, MODEL_PRICING } from '@/services/ai/constants';
+import { getEffectiveAISettings } from '@/services/ai/effectiveSettings';
 import type { AISettings, AIProviderName } from '@/services/ai/types';
 import { BoxedList, SettingLabel, SettingsRow, SettingsSwitchRow } from './primitives';
-import { getRuntimeConfig } from '@/services/runtimeConfig';
+import { useRuntimeConfig } from '@/hooks/useRuntimeConfig';
 
 type ConnectionStatus = 'idle' | 'testing' | 'success' | 'error';
 type CustomModelStatus = 'idle' | 'validating' | 'valid' | 'invalid';
@@ -70,15 +71,13 @@ const AIPanel: React.FC = () => {
   const _ = useTranslation();
   const { envConfig } = useEnv();
   const { settings, setSettings, saveSettings } = useSettingsStore();
-  const runtimeConfig = getRuntimeConfig();
+  const runtimeConfig = useRuntimeConfig();
   const serverManagedOpenRouter = runtimeConfig?.openRouterServerEnabled === true;
 
-  const aiSettings: AISettings = settings?.aiSettings ?? DEFAULT_AI_SETTINGS;
+  const aiSettings: AISettings = getEffectiveAISettings(settings?.aiSettings, runtimeConfig);
 
-  const [enabled, setEnabled] = useState(serverManagedOpenRouter || aiSettings.enabled);
-  const [provider, setProvider] = useState<AIProviderName>(
-    serverManagedOpenRouter ? 'openrouter' : aiSettings.provider,
-  );
+  const [enabled, setEnabled] = useState(aiSettings.enabled);
+  const [provider, setProvider] = useState<AIProviderName>(aiSettings.provider);
   const [ollamaUrl, setOllamaUrl] = useState(aiSettings.ollamaBaseUrl);
   const [ollamaModel, setOllamaModel] = useState(aiSettings.ollamaModel);
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
