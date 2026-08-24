@@ -34,6 +34,7 @@ const iosChecks = [
   { name: 'Rust compiler', command: 'rustc', args: ['--version'] },
   { name: 'Cargo', command: 'cargo', args: ['--version'] },
   { name: 'Full Xcode', command: 'xcodebuild', args: ['-version'] },
+  { name: 'XcodeGen', command: 'xcodegen', args: ['--version'] },
 ];
 const androidChecks = [
   { name: 'Rust compiler', command: 'rustc', args: ['--version'] },

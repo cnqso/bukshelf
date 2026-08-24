@@ -60,6 +60,8 @@ targets:
       #   "Multiple commands produce Readest.app/libapp.a"
       - path: Externals
         buildPhase: none
+        excludes:
+          - "**/*"
       - path: Readest_iOS
       - path: assets
         buildPhase: resources
@@ -76,6 +78,8 @@ targets:
       environmentVariables:
         RUST_BACKTRACE: full
         RUST_LOG: info
+      testTargets:
+        - BukshelfUITests
     settings:
       base:
         INFOPLIST_FILE: Readest_iOS/Info.plist
@@ -118,7 +122,15 @@ targets:
       - sdk: CarPlay.framework
       - sdk: MediaPlayer.framework
     preBuildScripts:
-      - script: pnpm tauri ios xcode-script -v --platform ${PLATFORM_DISPLAY_NAME:?} --sdk-root ${SDKROOT:?} --framework-search-paths "${FRAMEWORK_SEARCH_PATHS:?}" --header-search-paths "${HEADER_SEARCH_PATHS:?}" --gcc-preprocessor-definitions "${GCC_PREPROCESSOR_DEFINITIONS:-}" --configuration ${CONFIGURATION:?} ${FORCE_COLOR} ${ARCHS:?}
+      - script: |
+          if [ "${BUKSHELF_USE_PREBUILT_RUST:-0}" = "1" ]; then
+            test -f "${PROJECT_DIR}/Externals/arm64/${CONFIGURATION}/libapp.a" || {
+              echo "error: Missing prebuilt libapp.a; run pnpm dev-ios-sim first."
+              exit 1
+            }
+          else
+            pnpm tauri ios xcode-script -v --platform ${PLATFORM_DISPLAY_NAME:?} --sdk-root ${SDKROOT:?} --framework-search-paths "${FRAMEWORK_SEARCH_PATHS:?}" --header-search-paths "${HEADER_SEARCH_PATHS:?}" --gcc-preprocessor-definitions "${GCC_PREPROCESSOR_DEFINITIONS:-}" --configuration ${CONFIGURATION:?} ${FORCE_COLOR} ${ARCHS:?}
+          fi
         name: Build Rust Code
         basedOnDependencyAnalysis: false
         outputFiles:
@@ -150,6 +162,8 @@ targets:
       path: ShareExtension/Info.plist
       properties:
         CFBundleDisplayName: Bukshelf
+        CFBundleShortVersionString: 0.12.1
+        CFBundleVersion: 0.12.1
         NSExtension:
           NSExtensionPointIdentifier: com.apple.share-services
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
@@ -209,6 +223,8 @@ targets:
       path: ReadestWidget/Info.plist
       properties:
         CFBundleDisplayName: Bukshelf
+        CFBundleShortVersionString: 0.12.1
+        CFBundleVersion: 0.12.1
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
@@ -230,3 +246,17 @@ targets:
         SKIP_INSTALL: true
     dependencies:
       - sdk: WidgetKit.framework
+
+  BukshelfUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: ../../ios-tests
+    dependencies:
+      - target: Readest_iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.katamado.bukshelf.dev.UITests
+        TEST_TARGET_NAME: Readest_iOS
+        GENERATE_INFOPLIST_FILE: true
+        SWIFT_VERSION: "5.0"

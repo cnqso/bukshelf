@@ -57,3 +57,18 @@ test('canonical and generated iOS metadata contain required bundle keys', async 
     }
   }
 });
+
+test('iOS extensions use the same versions as the app', async () => {
+  const [app, shareExtension, widget] = await Promise.all([
+    read('src-tauri/gen/apple/Readest_iOS/Info.plist'),
+    read('src-tauri/gen/apple/ShareExtension/Info.plist'),
+    read('src-tauri/gen/apple/ReadestWidget/Info.plist'),
+  ]);
+  const plistValue = (plist, key) =>
+    plist.match(new RegExp(`<key>${key}<\\/key>\\s*<string>([^<]+)<\\/string>`))?.[1];
+
+  for (const key of ['CFBundleShortVersionString', 'CFBundleVersion']) {
+    assert.equal(plistValue(shareExtension, key), plistValue(app, key));
+    assert.equal(plistValue(widget, key), plistValue(app, key));
+  }
+});

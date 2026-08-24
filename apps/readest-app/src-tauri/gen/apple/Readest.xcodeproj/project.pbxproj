@@ -26,6 +26,7 @@
 		A870FB123FF2CAFB98EDCD36 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 57535F4C21FEA405C0A45945 /* CoreGraphics.framework */; };
 		AAF9140CE4DCCB761DD7E52C /* CarPlay.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F7F1EE1A41EFDFC53AA8AC46 /* CarPlay.framework */; };
 		AD210F1B265493B680566A63 /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A89C3EE1081B36DD033E747 /* WidgetSnapshot.swift */; };
+		B88498E84A6ADB001199A874 /* BukshelfUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A769DDA40733A6CFDFE094C /* BukshelfUITests.swift */; };
 		BA0A7C5B168460D96FA21D6B /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB595336F6275E2B879AF397 /* ShareViewController.swift */; };
 		D4A0A4E1CB92879877D7319E /* ReadestWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60661C103F0FF9B56906D570 /* ReadestWidgetBundle.swift */; };
 		D59272888A2BFE858490838D /* ReadingWidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25CB7597C040DC2E2BBAAD58 /* ReadingWidgetViews.swift */; };
@@ -44,6 +45,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 44B76E0EA5B592540156EFE5;
 			remoteInfo = ShareExtension;
+		};
+		42D56DD4D229887F2B40953E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4DC84354F14AFCCC05EC3197 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 004FF73D61EDB0623C953EBF;
+			remoteInfo = Readest_iOS;
 		};
 		A5ADF63C73D87F80C946A345 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -79,6 +87,7 @@
 		1A5492F8B4749D670A93DE66 /* clip_url.rs */ = {isa = PBXFileReference; path = clip_url.rs; sourceTree = "<group>"; };
 		1C29EFE86C85351F81C99F2A /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		1CF94262BF7499D2AD8B627D /* main.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
+		1F45B5B458F63D98B6113A19 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		25CB7597C040DC2E2BBAAD58 /* ReadingWidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingWidgetViews.swift; sourceTree = "<group>"; };
 		27B7FEAE989ABFF6C8FF0F77 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		282EE616A1F2B81C6121C9B6 /* transfer_file.rs */ = {isa = PBXFileReference; path = transfer_file.rs; sourceTree = "<group>"; };
@@ -90,6 +99,7 @@
 		32229C1C4618F3DE22D7DA83 /* bindings.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bindings.h; sourceTree = "<group>"; };
 		3A705F128DD67152CCD839D8 /* os_version.rs */ = {isa = PBXFileReference; path = os_version.rs; sourceTree = "<group>"; };
 		3A89C3EE1081B36DD033E747 /* WidgetSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshot.swift; sourceTree = "<group>"; };
+		3BF6722D965D71858CF5C59F /* BukshelfUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = BukshelfUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3C76FEE05802FC0886EA9BFA /* window_state.rs */ = {isa = PBXFileReference; path = window_state.rs; sourceTree = "<group>"; };
 		40409827389F82307433878B /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; path = assets; sourceTree = SOURCE_ROOT; };
 		43D595D3FA52D3FE6E943C72 /* events.rs */ = {isa = PBXFileReference; path = events.rs; sourceTree = "<group>"; };
@@ -110,6 +120,7 @@
 		873BB175A0D9F18545083504 /* cover_thumbnail.rs */ = {isa = PBXFileReference; path = cover_thumbnail.rs; sourceTree = "<group>"; };
 		93460D5281B9FD6211B45C72 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		983AD7B7F8D8B9BF527EF05D /* traffic_light.rs */ = {isa = PBXFileReference; path = traffic_light.rs; sourceTree = "<group>"; };
+		9A769DDA40733A6CFDFE094C /* BukshelfUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BukshelfUITests.swift; sourceTree = "<group>"; };
 		9B00698C6D8D59E6093819A0 /* range_file.rs */ = {isa = PBXFileReference; path = range_file.rs; sourceTree = "<group>"; };
 		9B22460180952B7C3F11DE9D /* main.rs */ = {isa = PBXFileReference; path = main.rs; sourceTree = "<group>"; };
 		9CE7112678AB90D73F62180F /* CarPlaySceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlaySceneDelegate.swift; sourceTree = "<group>"; };
@@ -212,6 +223,7 @@
 		2D6F041DFA6B062224902B98 /* Products */ = {
 			isa = PBXGroup;
 			children = (
+				3BF6722D965D71858CF5C59F /* BukshelfUITests.xctest */,
 				DAC68A4107C30410409E5506 /* Readest_iOS.app */,
 				BAD20961DC66C6D576E1F60B /* ReadestWidget.appex */,
 				E5F4A6E57CB4895FFFBC2DE8 /* ShareExtension.appex */,
@@ -273,6 +285,7 @@
 				2F0000D58F392BC2F808417D /* Assets.xcassets */,
 				30D8E7F6023C1DF41F8BD47C /* LaunchScreen.storyboard */,
 				60924896DC53876DC5E00FC4 /* Externals */,
+				E00473A126EEDFC57569C6F5 /* ios-tests */,
 				ADF310BD2F14DA462EF79E53 /* Readest_iOS */,
 				0DF97B3F0BF7031C35A6C773 /* ReadestWidget */,
 				78A80B1A0F19E69A0DDE1F53 /* SentrySupport */,
@@ -300,6 +313,7 @@
 			isa = PBXGroup;
 			children = (
 				9CE7112678AB90D73F62180F /* CarPlaySceneDelegate.swift */,
+				1F45B5B458F63D98B6113A19 /* Info.plist */,
 				7DADD61846736B0E638BF012 /* Readest_iOS.entitlements */,
 			);
 			path = Readest_iOS;
@@ -358,6 +372,15 @@
 			path = ../../src;
 			sourceTree = "<group>";
 		};
+		E00473A126EEDFC57569C6F5 /* ios-tests */ = {
+			isa = PBXGroup;
+			children = (
+				9A769DDA40733A6CFDFE094C /* BukshelfUITests.swift */,
+			);
+			name = "ios-tests";
+			path = "../../ios-tests";
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -403,6 +426,24 @@
 			productReference = E5F4A6E57CB4895FFFBC2DE8 /* ShareExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		A1442DE8257B7E2D59FDEE84 /* BukshelfUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C32D58CD28F4C4A701600F38 /* Build configuration list for PBXNativeTarget "BukshelfUITests" */;
+			buildPhases = (
+				8E633169E0A2A67D703F5D2B /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AB0D162420AD9CDEB3128D09 /* PBXTargetDependency */,
+			);
+			name = BukshelfUITests;
+			packageProductDependencies = (
+			);
+			productName = BukshelfUITests;
+			productReference = 3BF6722D965D71858CF5C59F /* BukshelfUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		C2B0475E36F5AAE3634B6C0F /* ReadestWidget */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 43DFFD15B0475835BBD103B6 /* Build configuration list for PBXNativeTarget "ReadestWidget" */;
@@ -430,6 +471,9 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					A1442DE8257B7E2D59FDEE84 = {
+						TestTargetID = 004FF73D61EDB0623C953EBF;
+					};
 				};
 			};
 			buildConfigurationList = B1D240E8E88B6626B5836EE7 /* Build configuration list for PBXProject "Readest" */;
@@ -452,6 +496,7 @@
 				004FF73D61EDB0623C953EBF /* Readest_iOS */,
 				44B76E0EA5B592540156EFE5 /* ShareExtension */,
 				C2B0475E36F5AAE3634B6C0F /* ReadestWidget */,
+				A1442DE8257B7E2D59FDEE84 /* BukshelfUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -497,7 +542,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "pnpm tauri ios xcode-script -v --platform ${PLATFORM_DISPLAY_NAME:?} --sdk-root ${SDKROOT:?} --framework-search-paths \"${FRAMEWORK_SEARCH_PATHS:?}\" --header-search-paths \"${HEADER_SEARCH_PATHS:?}\" --gcc-preprocessor-definitions \"${GCC_PREPROCESSOR_DEFINITIONS:-}\" --configuration ${CONFIGURATION:?} ${FORCE_COLOR} ${ARCHS:?}";
+			shellScript = "if [ \"${BUKSHELF_USE_PREBUILT_RUST:-0}\" = \"1\" ]; then\n  test -f \"${PROJECT_DIR}/Externals/arm64/${CONFIGURATION}/libapp.a\" || {\n    echo \"error: Missing prebuilt libapp.a; run pnpm dev-ios-sim first.\"\n    exit 1\n  }\nelse\n  pnpm tauri ios xcode-script -v --platform ${PLATFORM_DISPLAY_NAME:?} --sdk-root ${SDKROOT:?} --framework-search-paths \"${FRAMEWORK_SEARCH_PATHS:?}\" --header-search-paths \"${HEADER_SEARCH_PATHS:?}\" --gcc-preprocessor-definitions \"${GCC_PREPROCESSOR_DEFINITIONS:-}\" --configuration ${CONFIGURATION:?} ${FORCE_COLOR} ${ARCHS:?}\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -532,6 +577,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8E633169E0A2A67D703F5D2B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B88498E84A6ADB001199A874 /* BukshelfUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -539,6 +592,11 @@
 			isa = PBXTargetDependency;
 			target = 44B76E0EA5B592540156EFE5 /* ShareExtension */;
 			targetProxy = 03BA6A76BE384252922805BF /* PBXContainerItemProxy */;
+		};
+		AB0D162420AD9CDEB3128D09 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 004FF73D61EDB0623C953EBF /* Readest_iOS */;
+			targetProxy = 42D56DD4D229887F2B40953E /* PBXContainerItemProxy */;
 		};
 		D0D65668018F8B1C3AED5E22 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -575,6 +633,24 @@
 			};
 			name = debug;
 		};
+		24EFE60A5D1DB69B5FA59DFE /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.katamado.bukshelf.dev.UITests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Readest_iOS;
+			};
+			name = debug;
+		};
 		2A8D4045800079AA24F37354 /* debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -600,7 +676,7 @@
 				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME) $(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)";
 				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME) $(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.katamado.bukshelf.dev;
-				PRODUCT_NAME = "Bukshelf";
+				PRODUCT_NAME = Bukshelf;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -696,7 +772,7 @@
 				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME) $(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)";
 				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(TOOLCHAIN_DIR)/usr/lib/swift/$(PLATFORM_NAME) $(TOOLCHAIN_DIR)/usr/lib/swift-5.0/$(PLATFORM_NAME)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.katamado.bukshelf.dev;
-				PRODUCT_NAME = "Bukshelf";
+				PRODUCT_NAME = Bukshelf;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -841,6 +917,24 @@
 			};
 			name = debug;
 		};
+		E36A7B6C956FBE349B7069E0 /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.katamado.bukshelf.dev.UITests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Readest_iOS;
+			};
+			name = release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -876,6 +970,15 @@
 			buildConfigurations = (
 				356947E2563DA47502A8C4EF /* debug */,
 				9B92BAA323FCAA6E4D43A905 /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+		C32D58CD28F4C4A701600F38 /* Build configuration list for PBXNativeTarget "BukshelfUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				24EFE60A5D1DB69B5FA59DFE /* debug */,
+				E36A7B6C956FBE349B7069E0 /* release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = debug;

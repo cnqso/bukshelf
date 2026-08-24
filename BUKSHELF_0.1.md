@@ -267,7 +267,8 @@ no Apple App ID or team is committed. Change the name, publisher, or identifier
 everywhere with `pnpm native:identity -- --name <name> --publisher <publisher>
 --bundle-id <reverse.domain.id>`. Apple signing waits for the Katamado team ID.
 Run `pnpm native:doctor` before an iOS build to verify Rust, Cargo, both iOS
-Rust targets, and full Xcode.
+Rust targets, full Xcode, and XcodeGen. After `pnpm dev-ios-sim`, run
+`pnpm test:ios` for the packaged simulator launch test.
 Run `pnpm native:doctor:android` before an Android build to verify Java 17, the
 Android SDK/NDK and platform tools, plus all four Android Rust targets.
 

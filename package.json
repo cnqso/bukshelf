@@ -21,6 +21,7 @@
     "native:identity": "pnpm --dir apps/readest-app native:identity",
     "native:doctor": "pnpm --dir apps/readest-app native:doctor",
     "native:doctor:android": "pnpm --dir apps/readest-app native:doctor:android",
+    "test:ios": "pnpm --dir apps/readest-app test:ios",
     "storage:status": "pnpm --dir apps/readest-app storage:status",
     "storage:guard": "pnpm --dir apps/readest-app storage:guard",
     "storage:clean": "pnpm --dir apps/readest-app storage:clean",
