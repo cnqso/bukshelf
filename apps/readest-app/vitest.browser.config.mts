@@ -52,6 +52,9 @@ export default defineConfig({
   },
   test: {
     include: ['src/**/*.browser.test.ts', 'src/**/*.browser.test.tsx'],
+    // This suite intentionally spends real Soniox credits and requires the
+    // dedicated Bun test proxy. Run it only through test:browser:soniox-live.
+    exclude: ['src/__tests__/services/soniox-playback.live.browser.test.ts'],
     onConsoleLog(_log, type) {
       if (type === 'stdout') return false;
     },
