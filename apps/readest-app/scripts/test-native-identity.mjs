@@ -77,3 +77,14 @@ test('iOS extensions use the same versions as the app', async () => {
     );
   }
 });
+
+test('iOS simulator tests always terminate the app', async () => {
+  const [runner, uiTest] = await Promise.all([
+    read('scripts/test-ios-sim.sh'),
+    read('src-tauri/ios-tests/BukshelfUITests.swift'),
+  ]);
+
+  assert.match(runner, /trap cleanup EXIT/);
+  assert.match(runner, /simctl terminate "\$\{simulator_id\}" "\$\{bundle_id\}"/);
+  assert.match(uiTest, /addTeardownBlock \{\s*app\.terminate\(\)\s*\}/);
+});

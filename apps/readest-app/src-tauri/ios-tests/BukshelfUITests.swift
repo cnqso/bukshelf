@@ -8,6 +8,9 @@ final class BukshelfUITests: XCTestCase {
 
   func testLaunchesWebReaderShell() throws {
     let app = XCUIApplication()
+    addTeardownBlock {
+      app.terminate()
+    }
     app.launch()
 
     XCTAssertTrue(app.wait(for: .runningForeground, timeout: 15))
