@@ -268,3 +268,12 @@ everywhere with `pnpm native:identity -- --name <name> --publisher <publisher>
 --bundle-id <reverse.domain.id>`. Apple signing waits for the Katamado team ID.
 Run `pnpm native:doctor` before an iOS build to verify Rust, Cargo, both iOS
 Rust targets, and full Xcode.
+Run `pnpm native:doctor:android` before an Android build to verify Java 17, the
+Android SDK/NDK and platform tools, plus all four Android Rust targets.
+
+Native builds require 30 GiB free and automatically clear reproducible Bukshelf
+output before refusing to start. Use `pnpm storage:status` to inspect artifacts
+or `pnpm storage:clean` explicitly. `pnpm storage:clean:docker` removes Docker
+build cache older than seven days and dangling images, but never volumes. This
+workstation's Colima VM is capped at 40 GiB; automatic BuildKit garbage
+collection retains at most 12 GB and container logs rotate at 10 MB.

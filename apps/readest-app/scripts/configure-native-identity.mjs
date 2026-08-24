@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { readFile, readdir, writeFile } from 'node:fs/promises';
-import { extname, join, relative, resolve } from 'node:path';
+import { access, mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
+import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const appDir = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -90,6 +90,40 @@ function removeUpstreamSigning(contents) {
     .replaceAll('J5W48D69VR', '<APPLE_TEAM_ID>');
 }
 
+async function relocateAndroidSources(identifiers, nextIdentifier) {
+  const changed = [];
+  const androidSourceRoot = join(appDir, 'src-tauri', 'gen', 'android', 'app', 'src');
+  const nextPackagePath = nextIdentifier.replaceAll('.', '/');
+
+  for (const sourceSet of ['main', 'test', 'androidTest']) {
+    const javaRoot = join(androidSourceRoot, sourceSet, 'java');
+    const nextDirectory = join(javaRoot, nextPackagePath);
+    for (const identifier of identifiers) {
+      const previousDirectory = join(javaRoot, identifier.replaceAll('.', '/'));
+      if (previousDirectory === nextDirectory) continue;
+      try {
+        await access(previousDirectory);
+      } catch {
+        continue;
+      }
+      try {
+        await access(nextDirectory);
+        throw new Error(
+          `Cannot relocate Android package: both ${relative(appDir, previousDirectory)} and ${relative(appDir, nextDirectory)} exist`,
+        );
+      } catch (error) {
+        if (error?.code !== 'ENOENT') throw error;
+      }
+      await mkdir(dirname(nextDirectory), { recursive: true });
+      await rename(previousDirectory, nextDirectory);
+      changed.push(
+        `${relative(appDir, previousDirectory)} -> ${relative(appDir, nextDirectory)}`,
+      );
+    }
+  }
+  return changed;
+}
+
 async function main() {
   const args = process.argv.slice(2);
   if (args.includes('--help')) {
@@ -107,16 +141,18 @@ async function main() {
   };
   validateIdentity(next);
 
+  const identifiers = new Set([previous.bundleIdentifier, ...legacyBundleIdentifiers]);
+  const changed = await relocateAndroidSources(identifiers, next.bundleIdentifier);
+
   const files = [
     ...(await Promise.all(sourceRoots.map(listTextFiles))).flat(),
     join(appDir, '.env.tauri'),
     join(appDir, 'package.json'),
   ];
-  const changed = [];
   for (const path of files) {
     let contents = await readFile(path, 'utf8');
     const before = contents;
-    for (const identifier of new Set([previous.bundleIdentifier, ...legacyBundleIdentifiers])) {
+    for (const identifier of identifiers) {
       contents = contents.replaceAll(identifier, next.bundleIdentifier);
     }
     contents = updateDisplayName(contents, previous.displayName, next.displayName);

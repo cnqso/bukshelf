@@ -16,20 +16,26 @@ test('native identity is provisional and internally consistent', async () => {
   assert.equal(identity.productionIdentifierReserved, false);
   assert.match(identity.bundleIdentifier, /^com\.katamado\..+\.dev$/);
 
-  const [tauriConfig, androidConfig, appleProject, env] = await Promise.all([
+  const androidPackagePath = identity.bundleIdentifier.replaceAll('.', '/');
+  const [tauriConfig, androidConfig, androidActivity, appleProject, env] = await Promise.all([
     read('src-tauri/tauri.conf.json'),
     read('src-tauri/gen/android/app/build.gradle.kts'),
+    read(`src-tauri/gen/android/app/src/main/java/${androidPackagePath}/MainActivity.kt`),
     read('src-tauri/gen/apple/project.yml'),
     read('.env.tauri'),
   ]);
 
-  for (const contents of [tauriConfig, androidConfig, appleProject, env]) {
+  for (const contents of [tauriConfig, androidConfig, androidActivity, appleProject, env]) {
     assert.match(contents, new RegExp(identity.bundleIdentifier.replaceAll('.', '\\.')));
     assert.doesNotMatch(contents, /com\.bilingify\.readest/);
     assert.doesNotMatch(contents, /J5W48D69VR/);
   }
   assert.match(tauriConfig, new RegExp(`"productName": "${identity.displayName}"`));
   assert.doesNotMatch(tauriConfig, /developmentTeam/);
+  await assert.rejects(
+    read('src-tauri/gen/android/app/src/main/java/com/bilingify/readest/MainActivity.kt'),
+    { code: 'ENOENT' },
+  );
 });
 
 test('canonical and generated iOS metadata contain required bundle keys', async () => {
