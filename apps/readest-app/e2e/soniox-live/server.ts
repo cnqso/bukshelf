@@ -10,6 +10,7 @@ import { UsageStore } from '../../../bukshelf-server/src/usageStore';
 
 const PORT = 43_282;
 const BROWSER_ORIGIN = '*';
+const MAX_LIVE_TTS_REQUESTS = 6;
 const OWNER = {
   id: '123e4567-e89b-42d3-a456-426614174001',
   email: 'soniox-live@bukshelf.test',
@@ -46,6 +47,7 @@ const app = createHandler({
   secureCookies: false,
 });
 
+let liveTtsRequests = 0;
 const server = Bun.serve({
   hostname: '127.0.0.1',
   port: PORT,
@@ -57,6 +59,20 @@ const server = Bun.serve({
         { accessToken: session.accessToken },
         { headers: { 'access-control-allow-origin': BROWSER_ORIGIN } },
       );
+    }
+    if (path === '/api/tts/soniox' && request.method === 'POST') {
+      if (liveTtsRequests >= MAX_LIVE_TTS_REQUESTS) {
+        return Response.json(
+          {
+            error: {
+              message: `Live Soniox test is capped at ${MAX_LIVE_TTS_REQUESTS} requests`,
+              type: 'live_test_request_limit',
+            },
+          },
+          { status: 429, headers: { 'access-control-allow-origin': BROWSER_ORIGIN } },
+        );
+      }
+      liveTtsRequests += 1;
     }
     return (await app(request)) ?? new Response('Not found', { status: 404 });
   },

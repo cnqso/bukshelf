@@ -88,3 +88,17 @@ test('iOS simulator tests always terminate the app', async () => {
   assert.match(runner, /simctl terminate "\$\{simulator_id\}" "\$\{bundle_id\}"/);
   assert.match(uiTest, /addTeardownBlock \{\s*app\.terminate\(\)\s*\}/);
 });
+
+test('live Soniox regression is hard-limited and signal-safe', async () => {
+  const [server, runner] = await Promise.all([
+    read('e2e/soniox-live/server.ts'),
+    read('e2e/soniox-live/run.mjs'),
+  ]);
+
+  assert.match(server, /const MAX_LIVE_TTS_REQUESTS = 6/);
+  assert.match(server, /liveTtsRequests >= MAX_LIVE_TTS_REQUESTS/);
+  assert.match(runner, /process\.once\('SIGINT'/);
+  assert.match(runner, /process\.once\('SIGTERM'/);
+  assert.match(runner, /server\.kill\('SIGKILL'\)/);
+  assert.match(runner, /await stopAll\(\)/);
+});

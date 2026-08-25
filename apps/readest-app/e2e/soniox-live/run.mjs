@@ -1,6 +1,8 @@
 import { spawn } from 'node:child_process';
 
 const cwd = new URL('../..', import.meta.url).pathname.replace(/\/$/, '');
+let stopping = false;
+let vitest;
 const server = spawn('bun', ['e2e/soniox-live/server.ts'], {
   cwd,
   env: process.env,
@@ -27,15 +29,40 @@ const waitForServer = async () => {
 const stopServer = async () => {
   if (server.exitCode !== null) return;
   server.kill('SIGTERM');
-  await Promise.race([
-    new Promise((resolve) => server.once('exit', resolve)),
-    new Promise((resolve) => setTimeout(resolve, 5_000)),
+  const stopped = await Promise.race([
+    new Promise((resolve) => server.once('exit', () => resolve(true))),
+    new Promise((resolve) => setTimeout(() => resolve(false), 5_000)),
   ]);
+  if (!stopped && server.exitCode === null) server.kill('SIGKILL');
 };
+
+const stopVitest = async () => {
+  if (!vitest || vitest.exitCode !== null) return;
+  vitest.kill('SIGTERM');
+  const stopped = await Promise.race([
+    new Promise((resolve) => vitest.once('exit', () => resolve(true))),
+    new Promise((resolve) => setTimeout(() => resolve(false), 5_000)),
+  ]);
+  if (!stopped && vitest.exitCode === null) vitest.kill('SIGKILL');
+};
+
+const stopAll = async () => {
+  if (stopping) return;
+  stopping = true;
+  await stopVitest();
+  await stopServer();
+};
+
+const stopForSignal = (exitCode) => {
+  void stopAll().finally(() => process.exit(exitCode));
+};
+
+process.once('SIGINT', () => stopForSignal(130));
+process.once('SIGTERM', () => stopForSignal(143));
 
 try {
   await waitForServer();
-  const vitest = spawn(
+  vitest = spawn(
     'pnpm',
     ['exec', 'vitest', 'run', '--config', 'vitest.soniox-live.config.mts'],
     { cwd, env: process.env, stdio: 'inherit' },
@@ -43,5 +70,5 @@ try {
   const exitCode = await new Promise((resolve) => vitest.once('exit', resolve));
   if (exitCode !== 0) process.exitCode = typeof exitCode === 'number' ? exitCode : 1;
 } finally {
-  await stopServer();
+  await stopAll();
 }
